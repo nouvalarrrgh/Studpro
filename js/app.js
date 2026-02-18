@@ -943,10 +943,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       front.classList.toggle('hidden');
       back.classList.toggle('hidden');
       
-      // Update spaced repetition
+      // Update spaced repetition with exponential growth
       const fc = flashcards[idx];
       fc.reviewCount = (fc.reviewCount || 0) + 1;
-      const daysToAdd = Math.min(fc.reviewCount * 2, 30); // Max 30 days
+      const daysToAdd = Math.min(Math.pow(2, fc.reviewCount - 1), 30); // Exponential: 1, 2, 4, 8, 16, 30 days
       fc.nextReview = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
       saveFlashcards();
     }
@@ -1066,6 +1066,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 1000);
   }
 
+  // Add Enter key listener for chat input
+  document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      window.sendChat();
+    }
+  });
+
   // Generate Quiz
   window.generateQuiz = function() {
     const quizContainer = document.getElementById('quiz-container');
@@ -1125,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     currentQuiz.forEach((q, idx) => {
       const selected = document.querySelector(`input[name="quiz-q${idx}"]:checked`);
-      if (selected && parseInt(selected.value) === q.correct) {
+      if (selected && parseInt(selected.value, 10) === q.correct) {
         score++;
       }
     });
@@ -1148,7 +1156,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize StudyWithOpang when section is loaded
   document.querySelectorAll('.nav-btn').forEach(btn => {
-    const originalClickHandler = btn.onclick;
     btn.addEventListener('click', function() {
       if (this.getAttribute('data-target') === 'studywithopang') {
         loadFlashcards();
