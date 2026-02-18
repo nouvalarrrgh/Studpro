@@ -9,6 +9,11 @@ let myCharts = {};
 // Cache untuk notifikasi latar belakang (Auto-Check)
 let localCache = { tasks: [], financeBalance: 0, _reminded: {}, _warnedBalance: false };
 
+// State untuk StudyWithOpang
+let flashcards = [];
+let currentQuiz = [];
+let uploadedContent = '';
+
 // ==========================================
 // FUNGSI UI GLOBAL
 // ==========================================
@@ -889,11 +894,6 @@ document.addEventListener('DOMContentLoaded', async () => {
      FITUR 8: STUDYWITHOPANG
   ======================================= */
   
-  // State untuk StudyWithOpang
-  let flashcards = [];
-  let currentQuiz = [];
-  let uploadedContent = '';
-
   // Load flashcards dari localStorage
   function loadFlashcards() {
     const saved = localStorage.getItem('flashcards_' + (dbUser?.id || 'guest'));
