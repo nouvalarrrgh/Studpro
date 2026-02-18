@@ -206,6 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (target === 'iptracker') loadIpTracker();
         if (target === 'habits') loadHabitsPage();
         if (target === 'leaderboard') renderLeaderboard();
+        if (target === 'studywithopang') loadFlashcards();
       }
     });
   });
@@ -883,5 +884,277 @@ document.addEventListener('DOMContentLoaded', async () => {
     isRunning = !isRunning;
   });
   document.getElementById('btn-timer-reset')?.addEventListener('click', () => { clearInterval(timerInterval); isRunning = false; timeLeft = 25 * 60; if(btnStart) btnStart.textContent = 'Mulai'; updateDisplay(); });
+
+  /* =======================================
+     FITUR 8: STUDYWITHOPANG
+  ======================================= */
+  
+  // State untuk StudyWithOpang
+  let flashcards = [];
+  let currentQuiz = [];
+  let uploadedContent = '';
+
+  // Load flashcards dari localStorage
+  function loadFlashcards() {
+    const saved = localStorage.getItem('flashcards_' + (dbUser?.id || 'guest'));
+    if (saved) flashcards = JSON.parse(saved);
+    renderFlashcards();
+  }
+
+  // Save flashcards ke localStorage
+  function saveFlashcards() {
+    localStorage.setItem('flashcards_' + (dbUser?.id || 'guest'), JSON.stringify(flashcards));
+  }
+
+  // Render flashcards
+  function renderFlashcards() {
+    const container = document.getElementById('flashcard-container');
+    if (!container) return;
+    
+    if (flashcards.length === 0) {
+      container.innerHTML = '<p class="text-xs text-secondary text-center py-4">Belum ada flashcard. Tambah sekarang!</p>';
+      return;
+    }
+    
+    container.innerHTML = flashcards.map((fc, idx) => `
+      <div class="bg-gray-50 border border-border rounded-lg p-3 hover:border-pink-300 transition cursor-pointer" onclick="flipFlashcard(${idx})">
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <p class="text-xs font-semibold text-foreground mb-1" id="fc-front-${idx}">${fc.question}</p>
+            <p class="text-xs text-secondary hidden" id="fc-back-${idx}">${fc.answer}</p>
+          </div>
+          <button onclick="event.stopPropagation(); deleteFlashcard(${idx})" class="text-error hover:bg-error-light p-1 rounded cursor-pointer">
+            <i data-lucide="trash-2" class="size-3"></i>
+          </button>
+        </div>
+        <div class="mt-2 text-[10px] text-secondary">
+          Next review: ${new Date(fc.nextReview).toLocaleDateString('id-ID')}
+        </div>
+      </div>
+    `).join('');
+    lucide.createIcons();
+  }
+
+  // Flip flashcard (show answer)
+  window.flipFlashcard = function(idx) {
+    const front = document.getElementById(`fc-front-${idx}`);
+    const back = document.getElementById(`fc-back-${idx}`);
+    if (front && back) {
+      front.classList.toggle('hidden');
+      back.classList.toggle('hidden');
+      
+      // Update spaced repetition
+      const fc = flashcards[idx];
+      fc.reviewCount = (fc.reviewCount || 0) + 1;
+      const daysToAdd = Math.min(fc.reviewCount * 2, 30); // Max 30 days
+      fc.nextReview = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
+      saveFlashcards();
+    }
+  }
+
+  // Delete flashcard
+  window.deleteFlashcard = function(idx) {
+    if (confirm('Hapus flashcard ini?')) {
+      flashcards.splice(idx, 1);
+      saveFlashcards();
+      renderFlashcards();
+      window.showToast('Flashcard dihapus', 'success');
+    }
+  }
+
+  // Form submit for flashcard
+  document.getElementById('form-flashcard')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const question = document.getElementById('fc-question').value;
+    const answer = document.getElementById('fc-answer').value;
+    
+    flashcards.push({
+      question,
+      answer,
+      nextReview: new Date().toISOString(),
+      reviewCount: 0,
+      createdAt: new Date().toISOString()
+    });
+    
+    saveFlashcards();
+    renderFlashcards();
+    window.closeModal('modal-flashcard');
+    window.showToast('Flashcard ditambahkan!', 'success');
+    e.target.reset();
+  });
+
+  // Process document summary
+  window.processSummary = function() {
+    const fileInput = document.getElementById('upload-document');
+    const file = fileInput?.files[0];
+    
+    if (!file) {
+      window.showToast('Pilih file terlebih dahulu!', 'error');
+      return;
+    }
+    
+    window.showToast('Memproses dokumen...', 'success');
+    
+    // Simulate AI processing
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      uploadedContent = e.target.result;
+      
+      // Generate mock summary
+      setTimeout(() => {
+        const summaryResult = document.getElementById('summary-result');
+        const summaryContent = document.getElementById('summary-content');
+        
+        if (summaryResult && summaryContent) {
+          const mockSummary = [
+            '📌 <b>Poin Penting 1:</b> Materi ini membahas konsep fundamental yang perlu dipahami dengan baik.',
+            '📌 <b>Poin Penting 2:</b> Terdapat beberapa teori kunci yang saling berhubungan.',
+            '📌 <b>Poin Penting 3:</b> Aplikasi praktis dapat diterapkan dalam berbagai konteks.',
+            '💡 <b>Kesimpulan:</b> Memahami konsep dasar sangat penting untuk pengembangan lebih lanjut.'
+          ];
+          
+          summaryContent.innerHTML = mockSummary.join('<br><br>');
+          summaryResult.classList.remove('hidden');
+          window.showToast('Ringkasan berhasil dibuat!', 'success');
+        }
+      }, 2000);
+    };
+    
+    reader.readAsText(file);
+  }
+
+  // AI Tutor Chat
+  window.sendChat = function() {
+    const input = document.getElementById('chat-input');
+    const messagesContainer = document.getElementById('chat-messages');
+    
+    if (!input || !messagesContainer) return;
+    
+    const userMessage = input.value.trim();
+    if (!userMessage) return;
+    
+    // Clear initial message
+    if (messagesContainer.querySelector('.text-center')) {
+      messagesContainer.innerHTML = '';
+    }
+    
+    // Add user message
+    const userMsgDiv = document.createElement('div');
+    userMsgDiv.className = 'mb-3 flex justify-end';
+    userMsgDiv.innerHTML = `<div class="bg-blue-600 text-white px-3 py-2 rounded-lg max-w-[80%] text-xs">${userMessage}</div>`;
+    messagesContainer.appendChild(userMsgDiv);
+    
+    input.value = '';
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponses = [
+        'Pertanyaan yang bagus! Berdasarkan materi yang ada, saya dapat menjelaskan bahwa konsep ini memiliki beberapa komponen penting yang perlu dipahami...',
+        'Mari kita bahas secara detail. Pertama, kita perlu memahami konsep dasar. Kedua, kita lihat bagaimana penerapannya dalam konteks nyata...',
+        'Saya akan membantu menjelaskan ini. Topik ini sangat menarik karena berkaitan dengan berbagai aspek pembelajaran...',
+        'Terima kasih sudah bertanya! Untuk memahami ini dengan baik, saya sarankan untuk fokus pada poin-poin kunci berikut...'
+      ];
+      
+      const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)];
+      
+      const aiMsgDiv = document.createElement('div');
+      aiMsgDiv.className = 'mb-3 flex justify-start';
+      aiMsgDiv.innerHTML = `<div class="bg-gray-100 text-foreground px-3 py-2 rounded-lg max-w-[80%] text-xs">${randomResponse}</div>`;
+      messagesContainer.appendChild(aiMsgDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 1000);
+  }
+
+  // Generate Quiz
+  window.generateQuiz = function() {
+    const quizContainer = document.getElementById('quiz-container');
+    if (!quizContainer) return;
+    
+    window.showToast('Membuat quiz...', 'success');
+    
+    // Mock quiz questions
+    const mockQuestions = [
+      {
+        question: 'Apa konsep utama yang dibahas dalam materi ini?',
+        options: ['Konsep A', 'Konsep B', 'Konsep C', 'Konsep D'],
+        correct: 0
+      },
+      {
+        question: 'Bagaimana cara menerapkan teori dalam praktik?',
+        options: ['Metode 1', 'Metode 2', 'Metode 3', 'Metode 4'],
+        correct: 1
+      },
+      {
+        question: 'Apa kesimpulan dari materi pembelajaran?',
+        options: ['Kesimpulan A', 'Kesimpulan B', 'Kesimpulan C', 'Kesimpulan D'],
+        correct: 2
+      }
+    ];
+    
+    currentQuiz = mockQuestions;
+    
+    setTimeout(() => {
+      quizContainer.innerHTML = mockQuestions.map((q, qIdx) => `
+        <div class="bg-gray-50 border border-border rounded-lg p-3">
+          <p class="text-xs font-semibold mb-2">${qIdx + 1}. ${q.question}</p>
+          <div class="space-y-1">
+            ${q.options.map((opt, optIdx) => `
+              <label class="flex items-center text-xs cursor-pointer hover:bg-white p-2 rounded transition">
+                <input type="radio" name="quiz-q${qIdx}" value="${optIdx}" class="mr-2">
+                ${opt}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+      
+      quizContainer.innerHTML += `
+        <button onclick="submitQuiz()" class="w-full py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition cursor-pointer mt-2">
+          Submit Quiz
+        </button>
+      `;
+      
+      window.showToast('Quiz berhasil dibuat!', 'success');
+    }, 1500);
+  }
+
+  // Submit Quiz
+  window.submitQuiz = function() {
+    let score = 0;
+    
+    currentQuiz.forEach((q, idx) => {
+      const selected = document.querySelector(`input[name="quiz-q${idx}"]:checked`);
+      if (selected && parseInt(selected.value) === q.correct) {
+        score++;
+      }
+    });
+    
+    const resultDiv = document.getElementById('quiz-result');
+    const scoreDiv = document.getElementById('quiz-score');
+    
+    if (resultDiv && scoreDiv) {
+      scoreDiv.textContent = `${score}/${currentQuiz.length}`;
+      resultDiv.classList.remove('hidden');
+      
+      const percentage = (score / currentQuiz.length) * 100;
+      if (percentage >= 70) {
+        window.showToast('Luar biasa! Skor kamu tinggi!', 'success');
+      } else {
+        window.showToast('Tetap semangat! Coba lagi untuk meningkatkan pemahamanmu.', 'success');
+      }
+    }
+  }
+
+  // Initialize StudyWithOpang when section is loaded
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    const originalClickHandler = btn.onclick;
+    btn.addEventListener('click', function() {
+      if (this.getAttribute('data-target') === 'studywithopang') {
+        loadFlashcards();
+      }
+    });
+  });
+
 
 });
