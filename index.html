@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Student Productivity</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Lexend Deca', 'sans-serif'] },
+          colors: {
+            primary: '#165DFF', 'primary-hover': '#0E4BD9',
+            foreground: '#080C1A', secondary: '#6A7686',
+            muted: '#F4F6F8', border: '#E5E7EB',
+            success: '#30B22D', 'success-light': '#DCFCE7', 'success-dark': '#166534',
+            error: '#ED6B60', 'error-light': '#FEE2E2', 'error-dark': '#991B1B',
+            warning: '#FED71F', 'warning-light': '#FEF9C3', 'warning-dark': '#854D0E',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="font-sans bg-white min-h-[100dvh] overflow-hidden text-foreground text-sm">
+
+  <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden transition-opacity" onclick="toggleSidebar()"></div>
+
+  <div class="flex h-[100dvh] flex-1 bg-muted">
+    
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex flex-col w-[240px] h-[100dvh] bg-white border-r border-border transform -translate-x-full lg:translate-x-0 transition-transform duration-300">
+      <div class="flex items-center justify-between border-b border-border h-[60px] px-4 gap-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <i data-lucide="graduation-cap" class="w-4 h-4 text-white"></i>
+          </div>
+          <h1 class="font-semibold text-lg">StuProd</h1>
+        </div>
+        <button onclick="toggleSidebar()" class="lg:hidden p-1 text-secondary hover:bg-gray-100 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="size-5"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col p-3 gap-1 overflow-y-auto flex-1 scrollbar-hide pb-10" id="nav-menu">
+        <a href="#" data-target="apps" class="sidebar-nav-btn nav-btn group active cursor-pointer"><div class="flex items-center rounded-lg p-3 gap-3 bg-white group-[.active]:bg-muted hover:bg-muted transition-all"><i data-lucide="grid-2x2" class="size-5 text-secondary group-[.active]:text-foreground"></i><span class="font-medium text-secondary group-[.active]:font-semibold group-[.active]:text-foreground">Semua Aplikasi</span></div></a>
+        <a href="#" data-target="dashboard" class="sidebar-nav-btn nav-btn group cursor-pointer"><div class="flex items-center rounded-lg p-3 gap-3 bg-white group-[.active]:bg-muted hover:bg-muted transition-all"><i data-lucide="bar-chart-2" class="size-5 text-secondary group-[.active]:text-foreground"></i><span class="font-medium text-secondary group-[.active]:font-semibold group-[.active]:text-foreground">Ringkasan Analitik</span></div></a>
+      </div>
+
+      <div class="border-t bg-white border-border p-4 shrink-0">
+        <div class="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors sidebar-nav-btn nav-btn" data-target="profile">
+          <div class="min-w-0 flex-1 flex items-center gap-2">
+            <img src="" id="sidebar-avatar" alt="Profile" class="size-8 rounded-full object-cover">
+            <div class="min-w-0">
+              <p class="font-semibold text-foreground text-sm truncate" id="sidebar-name">Memuat...</p>
+              <p class="text-[10px] text-secondary truncate">Pengaturan Profil</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-muted h-[100dvh] overflow-hidden relative lg:ml-[240px]">
+      
+      <div class="flex items-center justify-between w-full h-[60px] shrink-0 border-b border-border bg-white px-4 md:px-6 z-30">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar()" class="lg:hidden p-2 -ml-2 text-secondary hover:bg-gray-100 rounded-lg cursor-pointer">
+            <i data-lucide="menu" class="size-5"></i>
+          </button>
+          <h2 id="page-title" class="font-bold text-lg text-foreground">Semua Aplikasi</h2>
+        </div>
+        
+        <div class="flex items-center gap-2 md:gap-4">
+          <div class="relative">
+            <button onclick="document.getElementById('notif-dropdown').classList.toggle('hidden')" class="relative p-2 text-secondary hover:bg-muted rounded-full transition cursor-pointer">
+              <i data-lucide="bell" class="size-5"></i>
+              <span id="notif-badge" class="absolute top-1 right-1 size-2.5 bg-error rounded-full hidden border-2 border-white"></span>
+            </button>
+            <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-64 md:w-72 bg-white rounded-xl shadow-lg border border-border overflow-hidden z-50">
+              <div class="p-3 border-b border-border font-bold text-sm">Notifikasi Terkini</div>
+              <div id="notif-list" class="max-h-64 overflow-y-auto p-2 space-y-1">
+                <p class="text-xs text-secondary p-2 text-center">Belum ada notifikasi.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 cursor-pointer sidebar-nav-btn nav-btn md:pl-4 md:border-l border-border" data-target="profile" title="Buka Profil">
+            <div class="text-right hidden sm:block">
+              <p class="font-semibold text-sm leading-tight text-foreground truncate max-w-[120px]" id="topbar-name">Memuat...</p>
+              <p class="text-[10px] text-secondary">Mahasiswa</p>
+            </div>
+            <img src="" id="topbar-avatar" alt="Profile" class="size-8 md:size-9 rounded-full object-cover ring-2 ring-border">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-8 relative w-full">
+        
+        <div id="section-apps" class="content-section">
+            <div class="mb-8">
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">Aplikasi</h1>
+                <p class="text-secondary text-sm">Akses layanan dan sistem informasi produktivitas mahasiswa.</p>
+                
+                <div class="mt-6 relative max-w-xl">
+                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-400"></i>
+                    <input type="text" placeholder="Cari aplikasi..." class="w-full bg-white border border-border rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="font-bold text-sm text-foreground mb-4">Akademik</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <button class="nav-btn text-left flex items-start p-4 bg-white border border-border rounded-2xl hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group" data-target="iptracker">
+                        <div class="size-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0 mr-4 group-hover:bg-primary transition-colors">
+                            <i data-lucide="calculator" class="size-6 text-blue-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="mt-0.5">
+                            <h4 class="font-bold text-foreground text-sm">IP Tracker</h4>
+                            <p class="text-[11px] text-secondary mt-1 leading-snug">Kalkulator dan riwayat nilai IPK/IPS.</p>
+                        </div>
+                    </button>
+                    <button class="nav-btn text-left flex items-start p-4 bg-white border border-border rounded-2xl hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group" data-target="roadmap">
+                        <div class="size-12 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0 mr-4 group-hover:bg-indigo-500 transition-colors">
+                            <i data-lucide="map" class="size-6 text-indigo-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="mt-0.5">
+                            <h4 class="font-bold text-foreground text-sm">Roadmap</h4>
+                            <p class="text-[11px] text-secondary mt-1 leading-snug">Rencana studi dan target per semester.</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="font-bold text-sm text-foreground mb-4">Produktivitas & Tools</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <button class="nav-btn text-left flex items-start p-4 bg-white border border-border rounded-2xl hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group" data-target="tasks">
+                        <div class="size-12 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 mr-4 group-hover:bg-emerald-500 transition-colors">
+                            <i data-lucide="check-square" class="size-6 text-emerald-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="mt-0.5">
+                            <h4 class="font-bold text-foreground text-sm">Tugas (Tasks)</h4>
+                            <p class="text-[11px] text-secondary mt-1 leading-snug">Manajemen tugas dan tenggat waktu.</p>
+                        </div>
+                    </button>
+                    <button class="nav-btn text-left flex items-start p-4 bg-white border border-border rounded-2xl hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group" data-target="habits">
+                        <div class="size-12 bg-purple-50 rounded-xl flex items-center justify-center shrink-0 mr-4 group-hover:bg-purple-500 transition-colors">
+                            <i data-lucide="calendar-check" class="size-6 text-purple-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="mt-0.5">
+                            <h4 class="font-bold text-foreground text-sm">Habit Tracker</h4>
+                            <p class="text-[11px] text-secondary mt-1 leading-snug">Pelacak kebiasaan baik harian.</p>
+                        </div>
+                    </button>
+                    <button class="nav-btn text-left flex items-start p-4 bg-white border border-border rounded-2xl hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group" data-target="pomodoro">
+                        <div class="size-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0 mr-4 group-hover:bg-red-500 transition-colors">
+                            <i data-lucide="timer" class="size-6 text-red-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="mt-0.5">
+                            <h4 class="font-bold text-foreground text-sm">Pomodoro</h4>
+                            <p class="text-[11px] text-secondary mt-1 leading-snug">Timer fokus belajar anti-distraksi.</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="font-bold text-sm text-foreground mb-4">Administrasi & Kemahasiswaan</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <button class="nav-btn text-left flex items-start p-4 bg-white border border-border rounded-2xl hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group" data-target="finance">
+                        <div class="size-12 bg-orange-50 rounded-xl flex items-center justify-center shrink-0 mr-4 group-hover:bg-orange-500 transition-colors">
+                            <i data-lucide="wallet" class="size-6 text-orange-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="mt-0.5">
+                            <h4 class="font-bold text-foreground text-sm">Siakunt (Keuangan)</h4>
+                            <p class="text-[11px] text-secondary mt-1 leading-snug">Pencatatan arus kas mahasiswa.</p>
+                        </div>
+                    </button>
+                    <button class="nav-btn text-left flex items-start p-4 bg-white border border-border rounded-2xl hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group" data-target="leaderboard">
+                        <div class="size-12 bg-yellow-50 rounded-xl flex items-center justify-center shrink-0 mr-4 group-hover:bg-yellow-500 transition-colors">
+                            <i data-lucide="trophy" class="size-6 text-yellow-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="mt-0.5">
+                            <h4 class="font-bold text-foreground text-sm">Leaderboard</h4>
+                            <p class="text-[11px] text-secondary mt-1 leading-snug">Papan peringkat mahasiswa teraktif.</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-dashboard" class="content-section hidden">
+          <div class="mb-4 md:mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-xl md:text-2xl font-bold mb-1">Ringkasan Analitik</h1>
+              <p class="text-secondary text-xs md:text-sm">Pantau statistik keseluruhan Anda.</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+            <div class="flex items-center md:flex-col md:items-start rounded-xl border border-border p-4 gap-3 bg-white shadow-sm"><div class="size-10 md:size-8 bg-warning/10 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="award" class="size-5 md:size-4 text-warning"></i></div><div><p class="font-medium text-secondary text-xs md:text-sm">Total Poin</p><p class="font-bold text-xl md:text-2xl" id="stat-points">0</p></div></div>
+            <div class="flex items-center md:flex-col md:items-start rounded-xl border border-border p-4 gap-3 bg-white shadow-sm"><div class="size-10 md:size-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="check-square" class="size-5 md:size-4 text-primary"></i></div><div><p class="font-medium text-secondary text-xs md:text-sm">Tugas Selesai</p><p class="font-bold text-xl md:text-2xl" id="stat-tasks-done">0</p></div></div>
+            <div class="flex items-center md:flex-col md:items-start rounded-xl border border-border p-4 gap-3 bg-white shadow-sm"><div class="size-10 md:size-8 bg-error/10 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="clock" class="size-5 md:size-4 text-error"></i></div><div><p class="font-medium text-secondary text-xs md:text-sm">Tugas Pending</p><p class="font-bold text-xl md:text-2xl" id="stat-tasks-pending">0</p></div></div>
+            <div class="flex items-center md:flex-col md:items-start rounded-xl border border-border p-4 gap-3 bg-white shadow-sm"><div class="size-10 md:size-8 bg-success/10 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="timer" class="size-5 md:size-4 text-success"></i></div><div><p class="font-medium text-secondary text-xs md:text-sm">Sesi Pomodoro</p><p class="font-bold text-xl md:text-2xl" id="stat-pomodoro">0</p></div></div>
+            
+            <div class="flex flex-col rounded-xl border border-border p-4 gap-2 bg-white shadow-sm sm:col-span-2 lg:col-span-2"><div class="flex items-center gap-2"><div class="size-8 bg-info/10 rounded-lg flex items-center justify-center"><i data-lucide="wallet" class="size-4 text-info"></i></div><p class="font-medium text-secondary text-sm">Saldo Keuangan</p></div><p class="font-bold text-xl md:text-2xl" id="stat-balance">Rp 0</p></div>
+            <div class="flex flex-col rounded-xl border border-border p-4 gap-2 bg-white shadow-sm sm:col-span-2 lg:col-span-2"><div class="flex items-center gap-2"><div class="size-8 bg-purple-100 rounded-lg flex items-center justify-center"><i data-lucide="target" class="size-4 text-purple-600"></i></div><p class="font-medium text-secondary text-sm">Total Habit Terdaftar</p></div><p class="font-bold text-xl md:text-2xl" id="stat-habits">0</p></div>
+          </div>
+        </div>
+
+        <div id="section-profile" class="content-section hidden">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
+            <div><h1 class="text-foreground text-xl md:text-2xl font-bold mb-1">Pengaturan Profil</h1><p class="text-secondary text-xs md:text-sm">Kelola identitas dan preferensi belajarmu.</p></div>
+            <div class="flex gap-2 w-full md:w-auto">
+              <button onclick="openModal('modal-edit-profile')" class="flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 border border-border bg-white rounded-lg text-sm font-semibold hover:bg-gray-50 transition-all cursor-pointer shadow-sm"><i data-lucide="user-pen" class="w-4 h-4 inline"></i> Edit Profil</button>
+              <button onclick="openModal('modal-change-password')" class="flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-hover transition-all cursor-pointer shadow-sm"><i data-lucide="key-round" class="w-4 h-4 inline"></i> Sandi</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
+            <div class="lg:col-span-1 space-y-4 md:space-y-6">
+              <div class="bg-white p-5 rounded-2xl border border-border shadow-sm text-center">
+                <div class="size-20 md:size-24 rounded-full mx-auto p-1 bg-white border border-border mb-3 relative group">
+                  <img src="" id="profile-avatar-large" alt="Profile" class="w-full h-full rounded-full object-cover">
+                </div>
+                <h2 class="text-lg md:text-xl font-bold text-foreground" id="profile-name">Memuat...</h2>
+                <p class="text-xs md:text-sm text-secondary font-medium mb-3 truncate" id="profile-email">memuat...</p>
+                <div class="inline-flex items-center justify-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold mb-4">
+                  <i data-lucide="award" class="size-3"></i> Level <span id="profile-level">1</span>
+                </div>
+                <p class="text-xs md:text-sm text-foreground italic border-l-4 border-primary pl-3 py-1 bg-primary/5 rounded-r-lg text-left" id="profile-bio">"Sedang mengejar beasiswa..."</p>
+                
+                <div class="grid grid-cols-2 gap-2 md:gap-3 w-full mt-5">
+                  <div class="bg-gray-50 p-2 rounded-xl border border-border"><span class="block text-base md:text-lg font-bold text-foreground" id="profile-stat-goals">0</span><span class="text-[10px] text-secondary font-medium uppercase tracking-wide">Poin</span></div>
+                  <div class="bg-gray-50 p-2 rounded-xl border border-border"><span class="block text-base md:text-lg font-bold text-foreground"><span id="profile-stat-hours">0</span>h</span><span class="text-[10px] text-secondary font-medium uppercase tracking-wide">Fokus</span></div>
+                </div>
+              </div>
+              <div class="bg-white p-4 md:p-5 rounded-2xl border border-border shadow-sm">
+                <h3 class="font-bold text-sm md:text-base mb-3 border-b border-border pb-2 flex items-center gap-2"><i data-lucide="graduation-cap" class="size-4 md:size-5 text-primary"></i> Info Akademik</h3>
+                <div class="space-y-3">
+                  <div><p class="text-[10px] md:text-xs text-secondary mb-0.5">Universitas</p><p class="font-semibold text-xs md:text-sm" id="profile-school">-</p></div>
+                  <div><p class="text-[10px] md:text-xs text-secondary mb-0.5">Jurusan</p><p class="font-semibold text-xs md:text-sm" id="profile-major">-</p></div>
+                  <div><p class="text-[10px] md:text-xs text-secondary mb-0.5">Semester Saat Ini</p><p class="font-semibold text-xs md:text-sm" id="profile-semester">-</p></div>
+                  <div><p class="text-[10px] md:text-xs text-secondary mb-0.5">Gaya Belajar</p><p class="font-semibold text-xs md:text-sm text-primary bg-primary/10 inline-block px-2 py-0.5 mt-1 rounded" id="profile-learning-style">Visual</p></div>
+                </div>
+              </div>
+              <button id="btn-logout-profile" class="w-full flex items-center justify-center gap-2 p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors cursor-pointer font-bold border border-red-100 shadow-sm"><i data-lucide="log-out" class="size-4 md:size-5"></i> Keluar Akun</button>
+            </div>
+            <div class="lg:col-span-2 space-y-4 md:space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div class="flex flex-col rounded-2xl border border-border p-4 md:p-6 bg-white shadow-sm w-full overflow-hidden"><div class="mb-4"><h3 class="font-bold text-sm md:text-base text-foreground flex items-center gap-2"><i data-lucide="list-todo" class="size-4 text-orange-500"></i> Status Tugas</h3></div><div class="relative h-[180px] md:h-[200px] w-full"><canvas id="taskChart"></canvas></div></div>
+                <div class="flex flex-col rounded-2xl border border-border p-4 md:p-6 bg-white shadow-sm w-full overflow-hidden"><div class="mb-4"><h3 class="font-bold text-sm md:text-base text-foreground flex items-center gap-2"><i data-lucide="trending-up" class="size-4 text-green-500"></i> Trend IPS</h3></div><div class="w-full h-[180px] md:h-[200px]"><canvas id="ipkChart"></canvas></div></div>
+              </div>
+              <div class="flex flex-col rounded-2xl border border-border p-4 md:p-6 bg-white shadow-sm w-full overflow-hidden"><div class="mb-4"><h3 class="font-bold text-sm md:text-base text-foreground flex items-center gap-2"><i data-lucide="activity" class="size-4 text-primary"></i> Target Habit Terdaftar</h3></div><div class="w-full h-[200px] md:h-[250px]"><canvas id="pomodoroChart"></canvas></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="section-leaderboard" class="content-section hidden">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
+              <div><h1 class="text-xl md:text-2xl font-bold mb-1">Papan Peringkat</h1><p class="text-secondary text-xs md:text-sm">Lihat siapa mahasiswa paling produktif!</p></div>
+          </div>
+          <div class="bg-white rounded-xl border border-border p-3 md:p-5 shadow-sm">
+              <div id="leaderboard-list" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <div id="section-tasks" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div><h1 class="text-xl md:text-2xl font-bold mb-1">Daftar Tugas</h1></div>
+                <button onclick="openModal('modal-task')" class="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover transition-all cursor-pointer text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Tambah Tugas</button>
+            </div>
+            <div class="bg-white rounded-xl border border-border overflow-x-auto shadow-sm w-full">
+                <table class="w-full text-sm min-w-[500px]"><thead class="bg-gray-50 border-b border-border"><tr><th class="px-4 py-3 text-left font-semibold text-secondary w-10">#</th><th class="px-4 py-3 text-left font-semibold text-secondary">Nama Tugas</th><th class="px-4 py-3 text-left font-semibold text-secondary">Deadline</th><th class="px-4 py-3 text-right font-semibold text-secondary">Aksi</th></tr></thead>
+                <tbody id="tasks-table-body" class="divide-y divide-border"></tbody></table>
+            </div>
+        </div>
+
+        <div id="section-roadmap" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div><h1 class="text-xl md:text-2xl font-bold mb-1">Roadmap Perkuliahan</h1></div>
+                <button onclick="openModal('modal-roadmap')" class="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium cursor-pointer text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Tambah Target</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4" id="roadmap-container"></div>
+        </div>
+
+        <div id="section-iptracker" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div><h1 class="text-xl md:text-2xl font-bold mb-1">Kalkulator IPK</h1></div>
+                <button onclick="openModal('modal-iptracker')" class="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium cursor-pointer text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Tambah Nilai</button>
+            </div>
+            <div class="flex bg-info/10 border border-info/20 p-4 md:p-5 rounded-xl mb-4 md:mb-6 items-center justify-between shadow-sm">
+                <div><p class="text-info-dark font-medium text-[10px] md:text-sm mb-1 uppercase tracking-wider">IP Kumulatif</p><p class="text-3xl md:text-4xl font-bold text-info-dark" id="ipk-display">0.00</p></div>
+                <div class="text-right"><p class="text-info-dark font-medium text-[10px] md:text-sm mb-1 uppercase tracking-wider">Total SKS</p><p class="text-xl md:text-2xl font-bold text-info-dark" id="sks-display">0</p></div>
+            </div>
+            <div id="iptracker-container" class="space-y-4 md:space-y-6"></div>
+        </div>
+
+        <div id="section-habits" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div><h1 class="text-xl md:text-2xl font-bold mb-1">Habit Tracker</h1></div>
+                <button onclick="openModal('modal-habit')" class="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium cursor-pointer text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Buat Habit Custom</button>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="font-bold text-sm mb-3">Rekomendasi Paket Habit</h3>
+                <div id="habit-recommendations" class="flex overflow-x-auto gap-4 pb-2 snap-x"></div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-border p-4 md:p-5 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-border pb-3">
+                  <h3 class="font-bold text-sm md:text-base">Checklist Hari Ini</h3>
+                  <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    <button class="habit-filter-time whitespace-nowrap px-3 py-1.5 rounded-lg text-xs border border-primary bg-primary text-white" data-time="all">Semua</button>
+                    <button class="habit-filter-time whitespace-nowrap px-3 py-1.5 rounded-lg text-xs border border-border hover:bg-gray-50" data-time="morning">Pagi</button>
+                    <button class="habit-filter-time whitespace-nowrap px-3 py-1.5 rounded-lg text-xs border border-border hover:bg-gray-50" data-time="afternoon">Siang</button>
+                    <button class="habit-filter-time whitespace-nowrap px-3 py-1.5 rounded-lg text-xs border border-border hover:bg-gray-50" data-time="evening">Malam</button>
+                  </div>
+                </div>
+                <div id="habits-today-container" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div id="section-finance" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div><h1 class="text-xl md:text-2xl font-bold mb-1">Siakunt (Keuangan)</h1></div>
+                <button onclick="openModal('modal-finance')" class="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium cursor-pointer text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Transaksi Baru</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6 text-center">
+                <div class="bg-success-light border border-success/20 p-3 md:p-4 rounded-xl shadow-sm"><p class="text-success-dark text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider">Pemasukan</p><p class="text-base md:text-lg font-bold text-success-dark" id="fin-income">Rp 0</p></div>
+                <div class="bg-error-light border border-error/20 p-3 md:p-4 rounded-xl shadow-sm"><p class="text-error-dark text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider">Pengeluaran</p><p class="text-base md:text-lg font-bold text-error-dark" id="fin-expense">Rp 0</p></div>
+                <div class="bg-info-light border border-info/20 p-3 md:p-4 rounded-xl shadow-sm"><p class="text-info-dark text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider">Saldo</p><p class="text-base md:text-lg font-bold text-info-dark" id="fin-balance">Rp 0</p></div>
+            </div>
+            <div class="bg-white rounded-xl border border-border overflow-x-auto shadow-sm w-full">
+                <table class="w-full text-sm min-w-[500px]"><thead class="bg-gray-50 border-b border-border"><tr><th class="px-4 py-3 text-left font-semibold text-secondary">Tanggal</th><th class="w-1/2 px-4 py-3 text-left font-semibold text-secondary">Keterangan</th><th class="px-4 py-3 text-left font-semibold text-secondary">Jumlah</th><th class="px-4 py-3 text-right font-semibold text-secondary">Aksi</th></tr></thead>
+                <tbody id="finance-table-body" class="divide-y divide-border"></tbody></table>
+            </div>
+        </div>
+
+        <div id="section-pomodoro" class="content-section hidden">
+            <div class="flex flex-col items-center justify-center pt-6 md:pt-10">
+                <h1 class="text-xl md:text-2xl font-bold mb-1">Fokus Belajar</h1>
+                <p class="text-secondary text-xs md:text-sm mb-6 md:mb-8 text-center px-4">Selesaikan sesi (25 Menit) untuk mendapatkan +10 Poin!</p>
+                <div class="relative flex items-center justify-center w-48 h-48 md:w-56 md:h-56 bg-white rounded-full border-[6px] md:border-8 border-muted shadow-lg mb-6 md:mb-8"><span id="timer-display" class="text-4xl md:text-5xl font-bold font-mono text-primary">25:00</span></div>
+                <div class="flex gap-3">
+                    <button id="btn-timer-start" class="px-6 py-2.5 bg-primary text-white rounded-lg font-semibold cursor-pointer shadow-md w-28 md:w-32">Mulai</button>
+                    <button id="btn-timer-reset" class="px-6 py-2.5 border border-border bg-white text-foreground rounded-lg font-semibold cursor-pointer w-28 md:w-32 shadow-sm">Reset</button>
+                </div>
+            </div>
+        </div>
+
+      </div>
+
+      <footer class="shrink-0 bg-white border-t border-border py-3 px-4 md:px-6 z-30 pb-safe md:pb-3 flex justify-between items-center text-[10px] md:text-xs text-secondary">
+         <p>&copy; 2026 StuProd. All rights reserved by <a href="https://muhammadnouvalarrizqy.vercel.app/" target="_blank" class="text-primary font-medium hover:underline">Muhammad Nouval Ar-Rizqy</a>.</p>
+         <div class="flex gap-3 hidden sm:flex">
+             <a href="#" class="hover:text-primary transition-colors">Bantuan</a>
+             <a href="#" class="hover:text-primary transition-colors">Privasi</a>
+         </div>
+      </footer>
+
+    </main>
+  </div>
+
+  <div id="modal-onboarding" class="fixed inset-0 bg-white z-[999] hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg space-y-6">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-primary rounded-2xl mx-auto flex items-center justify-center mb-4"><i data-lucide="graduation-cap" class="size-8 text-white"></i></div>
+        <h1 class="text-xl md:text-2xl font-bold text-foreground">Selamat Datang di StuProd!</h1>
+        <p class="text-secondary text-sm">Lengkapi profil akademikmu untuk mulai mengatur produktivitas.</p>
+      </div>
+      <form id="form-onboarding" class="bg-muted border border-border p-4 md:p-6 rounded-2xl space-y-4 shadow-sm">
+        <div><label class="block text-xs font-semibold mb-1">Username (Nama Panggilan)</label><input type="text" id="ob-username" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none"></div>
+        <div><label class="block text-xs font-semibold mb-1">Universitas / Institusi</label><input type="text" id="ob-school" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none" placeholder="Cth: Universitas Brawijaya"></div>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="block text-xs font-semibold mb-1">Jurusan</label><input type="text" id="ob-major" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none"></div>
+          <div><label class="block text-xs font-semibold mb-1">Semester</label><input type="number" id="ob-semester" required min="1" class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none"></div>
+        </div>
+        <button type="submit" class="w-full py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover mt-4 cursor-pointer shadow-md">Mulai Gunakan Aplikasi</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-edit-profile" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-[95%] max-w-lg overflow-hidden shadow-xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between p-4 border-b border-border shrink-0"><h3 class="font-bold">Edit Profil</h3><button type="button" onclick="closeModal('modal-edit-profile')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div>
+      <form id="form-edit-profile" class="p-4 space-y-4 overflow-y-auto">
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold text-secondary uppercase border-b pb-1">Info Pribadi</h4>
+          <div><label class="block text-xs font-semibold mb-1">Upload Foto Profil (Opsional)</label><input type="file" id="edit-avatar" accept="image/*" class="w-full text-xs md:text-sm text-secondary file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"></div>
+          <div><label class="block text-xs font-semibold mb-1">Username</label><input type="text" id="edit-username" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div>
+          <div><label class="block text-xs font-semibold mb-1">Bio Produktivitas</label><textarea id="edit-bio" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none" placeholder="Cth: Fokus lulus cumlaude!"></textarea></div>
+        </div>
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold text-secondary uppercase border-b pb-1 mt-2">Data Akademik</h4>
+          <div><label class="block text-xs font-semibold mb-1">Universitas</label><input type="text" id="edit-school" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div>
+          <div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-semibold mb-1">Jurusan</label><input type="text" id="edit-major" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label class="block text-xs font-semibold mb-1">Semester</label><input type="number" id="edit-semester" min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div></div>
+          <div><label class="block text-xs font-semibold mb-1">Gaya Belajar</label><select id="edit-learning" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"><option value="Visual">Visual</option><option value="Auditori">Auditori</option><option value="Kinestetik">Kinestetik</option></select></div>
+        </div>
+        <button type="submit" id="btn-save-profile" class="w-full py-2.5 bg-primary text-white rounded-lg font-medium cursor-pointer">Simpan Perubahan</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-task" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 class="font-bold">Tambah Tugas</h3><button type="button" onclick="closeModal('modal-task')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-task" class="p-4 space-y-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Nama Tugas</label><input type="text" id="task-title" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label class="block text-xs font-semibold text-secondary mb-1">Tanggal Deadline</label><input type="datetime-local" id="task-deadline" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><button type="submit" class="w-full py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover mt-2 cursor-pointer">Simpan Tugas</button></form></div></div>
+  <div id="modal-finance" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 class="font-bold">Tambah Transaksi</h3><button type="button" onclick="closeModal('modal-finance')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-finance" class="p-4 space-y-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Tipe</label><select id="finance-type" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></div><div><label class="block text-xs font-semibold text-secondary mb-1">Jumlah (Rp)</label><input type="number" id="finance-amount" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label class="block text-xs font-semibold text-secondary mb-1">Keterangan</label><input type="text" id="finance-note" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><button type="submit" class="w-full py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover mt-2 cursor-pointer">Simpan Transaksi</button></form></div></div>
+  <div id="modal-roadmap" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 class="font-bold">Tambah Target Roadmap</h3><button type="button" onclick="closeModal('modal-roadmap')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-roadmap" class="p-4 space-y-3"><div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Semester</label><input type="number" id="rm-semester" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label class="block text-xs font-semibold text-secondary mb-1">Target SKS</label><input type="number" id="rm-sks" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div></div><div><label class="block text-xs font-semibold text-secondary mb-1">Pencapaian</label><input type="text" id="rm-target" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label class="block text-xs font-semibold text-secondary mb-1">Status</label><select id="rm-status" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"><option value="rencana">Rencana</option><option value="berjalan">Berjalan</option><option value="selesai">Selesai</option></select></div><button type="submit" class="w-full py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover mt-2 cursor-pointer">Simpan</button></form></div></div>
+  
+  <div id="modal-iptracker" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl max-h-[95vh] flex flex-col"><div class="flex items-center justify-between p-4 border-b border-border shrink-0"><h3 class="font-bold">Kalkulasi Mata Kuliah</h3><button type="button" onclick="closeModal('modal-iptracker')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-iptracker" class="p-4 space-y-3 overflow-y-auto"><div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Semester</label><input type="number" id="ip-semester" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label class="block text-xs font-semibold text-secondary mb-1">SKS Matkul</label><input type="number" id="ip-sks" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div></div><div><label class="block text-xs font-semibold text-secondary mb-1">Nama Mata Kuliah</label><input type="text" id="ip-course" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div class="mt-4 pt-3 border-t border-border"><div class="flex items-center justify-between mb-2"><label class="block text-xs font-semibold text-foreground">Aspek Penilaian (Total Wajib 100%)</label><button type="button" id="btn-add-aspect" class="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-md hover:bg-primary/20 cursor-pointer">+ Tambah Aspek</button></div><div id="aspects-container" class="space-y-2"></div><div class="mt-2 text-xs font-bold text-right" id="total-weight-display">Total Bobot: 0%</div></div><button type="submit" class="w-full py-2 bg-primary text-white rounded-lg font-medium mt-4 cursor-pointer">Simpan & Hitung</button></form></div></div>
+  <div id="modal-habit" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 class="font-bold">Tambah Habit</h3><button type="button" onclick="closeModal('modal-habit')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-habit" class="p-4 space-y-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Nama Kebiasaan</label><input type="text" id="hb-title" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Kategori</label><select id="hb-area" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"><option value="study">Study</option><option value="health">Kesehatan</option><option value="general">General</option></select></div><div><label class="block text-xs font-semibold text-secondary mb-1">Waktu</label><select id="hb-time" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"><option value="morning">Pagi</option><option value="afternoon">Siang/Sore</option><option value="evening">Malam</option></select></div></div><button type="submit" class="w-full py-2 bg-primary text-white rounded-lg font-medium mt-2 cursor-pointer">Simpan</button></form></div></div>
+  <div id="modal-change-password" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-sm overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 class="font-bold">Ganti Kata Sandi</h3><button type="button" onclick="closeModal('modal-change-password')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-change-password" class="p-4 space-y-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Password Baru (Min. 6 Karakter)</label><input type="password" id="pw-new" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label class="block text-xs font-semibold text-secondary mb-1">Konfirmasi Password Baru</label><input type="password" id="pw-confirm" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><button type="submit" id="btn-submit-password" class="w-full py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 mt-2 cursor-pointer">Ubah Password</button></form></div></div>
+
+  <div id="toast" class="fixed top-4 right-4 z-[110] transform translate-x-full transition-transform duration-300 w-[90%] md:w-auto mx-auto left-0 md:left-auto right-0 md:right-4"><div class="bg-white border border-border rounded-xl p-3 shadow-lg flex items-center gap-3"><div id="toast-icon" class="size-8 rounded-lg flex items-center justify-center shrink-0"></div><p id="toast-message" class="font-medium text-sm pr-2">Berhasil!</p></div></div>
+
+  <script>lucide.createIcons();</script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

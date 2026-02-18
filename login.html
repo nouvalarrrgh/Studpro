@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Student Productivity</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style type="text/tailwindcss">
+    :root {
+      --primary: #165DFF; --primary-hover: #0E4BD9;
+      --foreground: #080C1A; --secondary: #6A7686;
+      --muted: #EFF2F7; --border: #F3F4F3;
+      --font-sans: 'Lexend Deca', sans-serif;
+    }
+    @theme inline {
+      --color-primary: var(--primary); --color-primary-hover: var(--primary-hover);
+      --color-foreground: var(--foreground); --color-secondary: var(--secondary);
+      --color-muted: var(--muted); --color-border: var(--border);
+      --font-sans: var(--font-sans);
+    }
+  </style>
+</head>
+<body class="font-sans bg-muted min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-border">
+    <div class="flex flex-col items-center mb-8">
+      <div class="w-14 h-12 bg-primary rounded-xl flex items-center justify-center mb-4">
+        <i data-lucide="graduation-cap" class="w-7 h-7 text-white"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-foreground">Welcome Back</h1>
+      <p class="text-secondary text-sm mt-1">Sign in to manage your productivity</p>
+    </div>
+
+    <form id="auth-form" class="space-y-5">
+      <div id="msg-box" class="hidden p-3 rounded-xl text-sm font-medium"></div>
+
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-2">Email Address</label>
+        <div class="relative">
+          <i data-lucide="mail" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+          <input type="email" id="email" required class="w-full pl-12 pr-4 py-3 rounded-2xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="student@email.com">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-2">Password</label>
+        <div class="relative">
+          <i data-lucide="lock" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+          <input type="password" id="password" required class="w-full pl-12 pr-4 py-3 rounded-2xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="••••••••">
+        </div>
+      </div>
+
+      <button type="submit" id="btn-submit" class="w-full py-3 bg-primary text-white rounded-2xl font-bold hover:bg-primary-hover transition-all mt-6 cursor-pointer">
+        Sign In
+      </button>
+    </form>
+
+    <div class="mt-6 text-center">
+      <p class="text-sm text-secondary">Don't have an account? 
+        <button id="toggle-mode" type="button" class="text-primary font-semibold hover:underline cursor-pointer">Register here</button>
+      </p>
+    </div>
+  </div>
+
+  <script>lucide.createIcons();</script>
+  <script type="module" src="js/auth.js"></script>
+</body>
+</html>
