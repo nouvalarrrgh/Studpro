@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Student Productivity Super App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    if (typeof lucide === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"><\/script>');
+    }
+  </script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Lexend Deca', 'sans-serif'] },
+          colors: {
+            primary: '#165DFF', 'primary-hover': '#0E4BD9',
+            foreground: '#080C1A', secondary: '#6A7686',
+            muted: '#F4F6F8', border: '#E5E7EB',
+            success: '#30B22D', 'success-light': '#DCFCE7', 'success-dark': '#166534',
+            error: '#ED6B60', 'error-light': '#FEE2E2', 'error-dark': '#991B1B',
+            warning: '#FED71F', 'warning-light': '#FEF9C3', 'warning-dark': '#854D0E',
+            info: '#00B2FF', 'info-light': '#E0F7FF', 'info-dark': '#00618A',
+            // Warna Khusus Me+ Style
+            'me-morning': '#FF9F43', 'me-afternoon': '#54A0FF', 'me-evening': '#5F27CD'
+          }
+        }
+      }
+    }
+    mermaid.initialize({ startOnLoad: false, theme: 'default', flowchart: { useMaxWidth: false }, themeVariables: { fontSize: '20px', fontFamily: 'Lexend Deca' } });
+  </script>
+  <style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    .perspective { perspective: 1000px; }
+    .transform-style-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    
+    .editor-content:empty:before { content: attr(placeholder); color: #9ca3af; pointer-events: none; display: block; }
+    
+    /* Roadmap Timeline Style */
+    .timeline-line { position: absolute; left: 24px; top: 0; bottom: 0; width: 2px; background-color: #E5E7EB; z-index: 0; }
+  </style>
+</head>
+<body class="font-sans bg-white min-h-[100dvh] overflow-hidden text-foreground text-sm">
+
+  <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden transition-opacity" onclick="toggleSidebar()"></div>
+
+  <div class="flex h-[100dvh] flex-1 bg-muted">
+    
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex flex-col w-[260px] h-[100dvh] bg-white border-r border-border transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-xl lg:shadow-none">
+      <div class="flex items-center justify-between border-b border-border h-[70px] px-5 gap-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-primary/30 shadow-md">
+            <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg leading-none">StuProd</h1>
+            <p class="text-[10px] text-secondary font-medium tracking-wide">WORKSPACE</p>
+          </div>
+        </div>
+        <button onclick="toggleSidebar()" class="lg:hidden p-1 text-secondary hover:bg-gray-100 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="size-5"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col p-4 gap-1 overflow-y-auto flex-1 scrollbar-hide pb-10" id="nav-menu">
+        <div data-i18n="nav_group_1" class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-2 mt-2 px-2">Menu Utama</div>
+        <a href="#" data-target="apps" class="sidebar-nav-btn nav-btn group active cursor-pointer"><div class="flex items-center rounded-xl p-3 gap-3 bg-white group-[.active]:bg-primary/5 group-[.active]:border-l-4 group-[.active]:border-primary hover:bg-muted transition-all"><i data-lucide="grid-2x2" class="size-5 text-secondary group-[.active]:text-primary"></i><span data-i18n="nav_apps" class="font-medium text-secondary group-[.active]:font-bold group-[.active]:text-primary">Semua Aplikasi</span></div></a>
+        <a href="#" data-target="dashboard" class="sidebar-nav-btn nav-btn group cursor-pointer"><div class="flex items-center rounded-xl p-3 gap-3 bg-white group-[.active]:bg-primary/5 group-[.active]:border-l-4 group-[.active]:border-primary hover:bg-muted transition-all"><i data-lucide="bar-chart-2" class="size-5 text-secondary group-[.active]:text-primary"></i><span data-i18n="nav_dash" class="font-medium text-secondary group-[.active]:font-bold group-[.active]:text-primary">Ringkasan Analitik</span></div></a>
+        <a href="#" data-target="studyroom" class="sidebar-nav-btn nav-btn group cursor-pointer mt-4">
+            <div class="flex items-center rounded-xl p-3 gap-3 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 transition-all shadow-sm">
+                <i data-lucide="users" class="size-5 text-indigo-600"></i>
+                <span data-i18n="nav_study" class="font-bold text-indigo-700">Study Room & Friends</span>
+            </div>
+        </a>
+      </div>
+      <div class="space-y-1.5">
+                    <p data-i18n="nav_group_2" class="px-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-3">Sistem</p>
+                    
+                    <a href="#" data-target="settings" class="nav-btn flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-all font-semibold">
+                        <i data-lucide="settings" class="size-5"></i>
+                        <span data-i18n="nav_set">Pengaturan</span>
+                    </a>
+                </div>
+
+      <div class="border-t bg-gray-50 border-border p-4 shrink-0">
+        <div class="flex items-center justify-between cursor-pointer hover:bg-white p-2 -m-2 rounded-xl transition-colors sidebar-nav-btn nav-btn border border-transparent hover:border-border hover:shadow-sm" data-target="profile">
+          <div class="min-w-0 flex-1 flex items-center gap-3">
+            <img src="" id="sidebar-avatar" alt="Profile" class="size-9 rounded-full object-cover bg-gray-200">
+            <div class="min-w-0">
+              <p class="font-bold text-foreground text-sm truncate" id="sidebar-name">Memuat...</p>
+              <p data-i18n="nav_profile" class="text-[10px] text-secondary truncate">Lihat Profil</p>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="size-4 text-secondary"></i>
+        </div>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-muted h-[100dvh] overflow-hidden relative lg:ml-[260px]">
+      
+      <div class="flex items-center justify-between w-full h-[70px] shrink-0 border-b border-border bg-white px-4 md:px-8 z-30">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar()" class="lg:hidden p-2 -ml-2 text-secondary hover:bg-gray-100 rounded-lg cursor-pointer">
+            <i data-lucide="menu" class="size-6"></i>
+          </button>
+          <div>
+            <h2 id="page-title" class="font-bold text-xl text-foreground" data-i18n="nav_apps">Semua Aplikasi</h2>
+            <p id="welcome-text" data-i18n="header_greeting" class="hidden md:block text-xs text-secondary">Selamat datang kembali!</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-3 md:gap-5">
+          <div class="relative">
+            <button onclick="document.getElementById('notif-dropdown').classList.toggle('hidden')" class="relative p-2.5 text-secondary hover:bg-muted rounded-full transition cursor-pointer">
+              <i data-lucide="bell" class="size-5"></i>
+              <span id="notif-badge" class="absolute top-2 right-2 size-2.5 bg-error rounded-full hidden border-2 border-white animate-pulse"></span>
+            </button>
+            <div id="notif-dropdown" class="hidden absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-2xl shadow-xl border border-border overflow-hidden z-50">
+              <div class="p-4 border-b border-border bg-gray-50 flex justify-between items-center"><span data-i18n="notif_title" class="font-bold text-sm">Notifikasi</span><button data-i18n="notif_read" class="text-[10px] text-primary hover:underline">Tandai Dibaca</button></div>
+              <div id="notif-list" class="max-h-72 overflow-y-auto">
+                <p data-i18n="notif_empty" class="text-xs text-secondary p-6 text-center">Belum ada notifikasi.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="h-8 w-px bg-border hidden md:block"></div>
+
+          <div class="flex items-center gap-3 cursor-pointer sidebar-nav-btn nav-btn" data-target="profile" title="Buka Profil">
+             <div class="text-right hidden md:block">
+              <p class="font-bold text-sm leading-tight text-foreground truncate max-w-[120px]" id="topbar-name">User</p>
+              <div class="flex items-center justify-end gap-1"><div class="size-2 rounded-full bg-success"></div><p data-i18n="header_online" class="text-[10px] text-secondary">Online</p></div>
+            </div>
+            <img src="" id="topbar-avatar" alt="Profile" class="size-10 rounded-full object-cover ring-2 ring-white shadow-sm bg-gray-200">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8 relative w-full scroll-smooth">
+        
+        <div id="section-apps" class="content-section">
+            <div class="bg-gradient-to-r from-primary to-indigo-600 rounded-3xl p-8 mb-10 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                <div class="relative z-10">
+                    <h1 data-i18n="app_super_dash" class="text-2xl md:text-4xl font-bold mb-2">Super Dashboard</h1>
+                    <p data-i18n="app_super_desc" class="text-white/80 text-sm md:text-base max-w-xl">Akses seluruh alat produktivitasmu dalam satu tempat. Mulai dari manajemen tugas, catatan kuliah, hingga persiapan karir.</p>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="font-bold text-base text-foreground mb-4 flex items-center gap-2"><i data-lucide="sparkles" class="size-4 text-warning"></i> <span data-i18n="app_cat_premium">Aplikasi Premium (AI Powered)</span></h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <button class="nav-btn text-left p-6 bg-white border border-border rounded-2xl hover:shadow-xl hover:border-primary/30 transition-all cursor-pointer group hover:-translate-y-1" data-target="studywithopang">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="size-12 bg-violet-100 rounded-xl flex items-center justify-center text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors"><i data-lucide="brain" class="size-6"></i></div>
+                            <div><h4 data-i18n="app_studyopang" class="font-bold text-lg">StudyWithOpang</h4><span class="text-[10px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-bold">AI SUITE</span></div>
+                        </div>
+                        <p data-i18n="app_studyopang_desc" class="text-sm text-secondary leading-relaxed">Asisten belajar AI. Upload materi, otomatis jadi Rangkuman, Mind Map, dan Kuis.</p>
+                    </button>
+                    <button class="nav-btn text-left p-6 bg-white border border-border rounded-2xl hover:shadow-xl hover:border-rose-300 transition-all cursor-pointer group hover:-translate-y-1" data-target="prediction">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="size-12 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors"><i data-lucide="target" class="size-6"></i></div>
+                            <div><h4 data-i18n="app_prediksi" class="font-bold text-lg">Prediksi Soal</h4><span class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">EXAM PREP</span></div>
+                        </div>
+                        <p data-i18n="app_prediksi_desc" class="text-sm text-secondary leading-relaxed">Analisis pola soal ujian tahun lalu untuk memprediksi soal yang akan keluar.</p>
+                    </button>
+                     <button class="nav-btn text-left p-6 bg-white border border-border rounded-2xl hover:shadow-xl hover:border-indigo-300 transition-all cursor-pointer group hover:-translate-y-1" data-target="thesis">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="size-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><i data-lucide="book-open" class="size-6"></i></div>
+                            <div><h4 data-i18n="app_skripsi" class="font-bold text-lg">Bimbingan Skripsi</h4><span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">AI TUTOR</span></div>
+                        </div>
+                        <p data-i18n="app_skripsi_desc" class="text-sm text-secondary leading-relaxed">Asisten AI penyusun struktur bab skripsi dan gap penelitian.</p>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="font-bold text-base text-foreground mb-4 flex items-center gap-2"><i data-lucide="layout-grid" class="size-4 text-primary"></i> <span data-i18n="app_cat_daily">Produktivitas Harian</span></h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <button class="nav-btn text-left p-5 bg-white border border-border rounded-2xl hover:border-gray-400 hover:shadow-md transition-all cursor-pointer group" data-target="workspace">
+                        <div class="size-10 bg-gray-100 rounded-lg flex items-center justify-center mb-3 group-hover:bg-gray-800 group-hover:text-white transition-colors"><i data-lucide="layout" class="size-5"></i></div>
+                        <h4 data-i18n="app_7" class="font-bold text-foreground">Ruang Kerja</h4>
+                        <p data-i18n="app_7_desc" class="text-xs text-secondary mt-1">Catatan & Proyek (Notion Style).</p>
+                    </button>
+                    <button class="nav-btn text-left p-5 bg-white border border-border rounded-2xl hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group" data-target="drive">
+                        <div class="size-10 bg-blue-50 rounded-lg flex items-center justify-center mb-3 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors"><i data-lucide="hard-drive" class="size-5"></i></div>
+                        <h4 data-i18n="app_8" class="font-bold text-foreground">Drive</h4>
+                        <p data-i18n="app_8_desc" class="text-xs text-secondary mt-1">Penyimpanan file kuliah.</p>
+                    </button>
+                    <button class="nav-btn text-left p-5 bg-white border border-border rounded-2xl hover:border-red-400 hover:shadow-md transition-all cursor-pointer group" data-target="calendar">
+                        <div class="size-10 bg-red-50 rounded-lg flex items-center justify-center mb-3 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors"><i data-lucide="calendar" class="size-5"></i></div>
+                        <h4 data-i18n="app_9" class="font-bold text-foreground">Kalender</h4>
+                        <p data-i18n="app_9_desc" class="text-xs text-secondary mt-1">Jadwal & Reminder.</p>
+                    </button>
+                    <button class="nav-btn text-left p-5 bg-white border border-border rounded-2xl hover:border-purple-400 hover:shadow-md transition-all cursor-pointer group" data-target="habits">
+                        <div class="size-10 bg-purple-50 rounded-lg flex items-center justify-center mb-3 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors"><i data-lucide="activity" class="size-5"></i></div>
+                        <h4 data-i18n="app_3" class="font-bold text-foreground">Habit Tracker</h4>
+                        <p data-i18n="app_3_desc" class="text-xs text-secondary mt-1">Pelacak rutinitas.</p>
+                    </button>
+                    <button class="nav-btn text-left p-5 bg-white border border-border rounded-2xl hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group" data-target="todo">
+                        <div class="size-10 bg-emerald-50 rounded-lg flex items-center justify-center mb-3 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><i data-lucide="list-todo" class="size-5"></i></div>
+                        <h4 data-i18n="app_2" class="font-bold text-foreground">To-Do List</h4>
+                        <p data-i18n="app_2_desc" class="text-xs text-secondary mt-1">Manajemen tugas.</p>
+                    </button>
+
+                    <button class="nav-btn text-left p-5 bg-white border border-border rounded-2xl hover:border-rose-400 hover:shadow-md transition-all cursor-pointer group" data-target="pomodoro">
+    <div class="size-10 bg-rose-50 rounded-lg flex items-center justify-center mb-3 text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+        <i data-lucide="timer" class="size-5"></i>
+    </div>
+    <h4 data-i18n="app_1" class="font-bold text-foreground">Pomodoro</h4>
+    <p data-i18n="app_1_desc" class="text-xs text-secondary mt-1">Timer lofi & fokus.</p>
+</button>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 data-i18n="app_cat_admin" class="font-bold text-base text-foreground mb-4">Administrasi & Lainnya</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                     <button class="nav-btn text-left flex items-center gap-3 p-4 bg-white border border-border rounded-2xl hover:bg-gray-50 transition-all cursor-pointer" data-target="finance">
+                        <div class="size-10 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600"><i data-lucide="wallet" class="size-5"></i></div>
+                        <div><h4 data-i18n="app_5" class="font-bold text-sm">Keuangan</h4><p data-i18n="app_5_desc" class="text-[10px] text-secondary">Catat Arus Kas</p></div>
+                    </button>
+                    <button class="nav-btn text-left flex items-center gap-3 p-4 bg-white border border-border rounded-2xl hover:bg-gray-50 transition-all cursor-pointer" data-target="iptracker">
+                        <div class="size-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600"><i data-lucide="calculator" class="size-5"></i></div>
+                        <div><h4 data-i18n="app_4" class="font-bold text-sm">IP Tracker</h4><p data-i18n="app_4_desc" class="text-[10px] text-secondary">Hitung IPK</p></div>
+                    </button>
+                    <button class="nav-btn text-left flex items-center gap-3 p-4 bg-white border border-border rounded-2xl hover:bg-gray-50 transition-all cursor-pointer" data-target="roadmap">
+                        <div class="size-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600"><i data-lucide="map" class="size-5"></i></div>
+                        <div><h4 data-i18n="app_6" class="font-bold text-sm">Roadmap</h4><p data-i18n="app_6_desc" class="text-[10px] text-secondary">Target Semester</p></div>
+                    </button>
+                    <button class="nav-btn text-left flex items-center gap-3 p-4 bg-white border border-border rounded-2xl hover:bg-gray-50 transition-all cursor-pointer" data-target="leaderboard">
+                        <div class="size-10 bg-yellow-50 rounded-lg flex items-center justify-center text-yellow-600"><i data-lucide="trophy" class="size-5"></i></div>
+                        <div><h4 data-i18n="app_leader" class="font-bold text-sm">Leaderboard</h4><p data-i18n="app_leader_desc" class="text-[10px] text-secondary">Top 50 Pelajar</p></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+<div id="section-workspace" class="content-section hidden h-[calc(100vh-140px)]">
+            <div class="flex flex-col md:flex-row h-full bg-white border border-border rounded-2xl overflow-hidden shadow-sm">
+                
+                <aside class="w-full md:w-64 shrink-0 bg-gray-50 border-b md:border-b-0 md:border-r border-border flex flex-col h-[35%] md:h-full">
+                    <div class="p-3 md:p-4 border-b border-border">
+                        <div class="flex items-center justify-between mb-2 md:mb-4">
+                            <span data-i18n="ws_mypages" class="text-[10px] md:text-xs font-bold text-secondary uppercase tracking-wider">Halaman Saya</span>
+                            <button onclick="createNewPage('note')" class="text-secondary hover:text-primary"><i data-lucide="plus" class="size-4"></i></button>
+                        </div>
+                        <div id="workspace-page-list" class="space-y-1 overflow-y-auto max-h-[20vh] md:max-h-[60vh]">
+                            </div>
+                    </div>
+                    <div class="p-2 md:p-4 mt-auto border-t border-border">
+                        <p data-i18n="ws_tip" class="text-[9px] md:text-[10px] text-secondary text-center">Tip: Klik + untuk buat halaman baru.</p>
+                    </div>
+                </aside>
+                
+                <main class="flex-1 flex flex-col relative min-w-0 h-[65%] md:h-full">
+                     <div id="workspace-content" class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 lg:px-12 min-w-0">
+                         <div class="flex flex-col items-center justify-center h-full text-secondary opacity-50">
+                             <i data-lucide="layout" class="size-12 md:size-16 mb-4"></i>
+                             <p data-i18n="ws_empty" class="text-sm text-center px-4">Pilih atau buat halaman untuk memulai.</p>
+                         </div>
+                     </div>
+                     <div class="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex gap-2">
+                        <button onclick="createNewPage('note')" class="size-10 md:size-12 bg-primary text-white rounded-full shadow-lg hover:scale-105 transition flex items-center justify-center tooltip" title="Catatan Baru"><i data-lucide="file-plus" class="size-4 md:size-5"></i></button>
+                        <button onclick="createNewPage('kanban')" class="size-10 md:size-12 bg-indigo-600 text-white rounded-full shadow-lg hover:scale-105 transition flex items-center justify-center tooltip" title="Proyek Baru"><i data-lucide="trello" class="size-4 md:size-5"></i></button>
+                        <button onclick="createNewPage('table')" class="size-10 md:size-12 bg-emerald-600 text-white rounded-full shadow-lg hover:scale-105 transition flex items-center justify-center tooltip" title="Database Baru"><i data-lucide="table" class="size-4 md:size-5"></i></button>
+                     </div>
+                </main>
+                
+            </div>
+        </div>
+
+<div id="section-drive" class="content-section hidden flex-col h-[calc(100vh-120px)]">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
+                <div>
+                    <h2 data-i18n="dr_title" class="text-2xl font-bold text-foreground mb-1">Penyimpanan Drive</h2>
+                    <div id="drive-breadcrumbs" class="text-sm text-secondary flex items-center gap-2">
+                        <span class="hover:text-primary cursor-pointer font-medium" onclick="navigateToFolder(null)">My Drive</span>
+                        </div>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <div class="relative w-full md:w-64">
+                      <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400"></i>
+                      <input data-i18n-placeholder="dr_search" type="text" id="drive-search-input" oninput="searchDrive(this.value)" placeholder="Cari file/folder..." class="w-full bg-white border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-all">
+                    </div>
+                    <div class="relative group">
+                        <button class="whitespace-nowrap px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition cursor-pointer shadow-md flex items-center gap-2">
+                            <i data-lucide="plus" class="size-4"></i> <span data-i18n="dr_new">Baru</span>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 bg-white border border-border rounded-xl shadow-xl hidden group-hover:block z-50 overflow-hidden">
+                            <button onclick="openModal('modal-new-folder')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium border-b border-border transition"><i data-lucide="folder-plus" class="size-4 text-blue-600"></i> <span data-i18n="dr_new_folder">Folder Baru</span></button>
+                            <button onclick="openModal('modal-upload-file')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium border-b border-border transition"><i data-lucide="file-up" class="size-4 text-blue-600"></i> <span data-i18n="dr_up_file">Upload File</span></button>
+                            <label class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium cursor-pointer transition"><i data-lucide="folder-up" class="size-4 text-blue-600"></i> <span data-i18n="dr_up_folder">Upload Folder</span> <input type="file" webkitdirectory directory multiple class="hidden" onchange="uploadFolderDirect(event)"></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 bg-white border border-border rounded-2xl shadow-sm p-6 overflow-y-auto">
+                <div id="drive-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    </div>
+            </div>
+        </div>
+
+<div id="section-calendar" class="content-section hidden h-[calc(100vh-120px)]">
+            <div class="flex flex-col h-full bg-white border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 md:p-6 border-b border-border flex justify-between items-center bg-white shrink-0">
+                    <div class="flex items-center gap-4">
+                        <button onclick="calGoToday()" data-i18n="cal_today" class="px-4 py-2 border border-border rounded-lg text-sm font-bold hover:bg-gray-50 transition">Hari Ini</button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="calChange(-1)" class="p-1.5 hover:bg-gray-100 rounded-full transition"><i data-lucide="chevron-left" class="size-5 text-secondary"></i></button>
+                            <button onclick="calChange(1)" class="p-1.5 hover:bg-gray-100 rounded-full transition"><i data-lucide="chevron-right" class="size-5 text-secondary"></i></button>
+                        </div>
+                        <h2 class="text-xl md:text-2xl font-normal text-foreground min-w-[150px]" id="calendar-title">Januari 2026</h2>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <select id="cal-view-mode" onchange="calChangeView(this.value)" class="px-4 py-2 border border-border rounded-lg text-sm font-bold bg-white hover:bg-gray-50 cursor-pointer outline-none hidden md:block">
+                            <option value="month" data-i18n="cal_month">Bulan</option>
+                            <option value="day" data-i18n="cal_day">Hari</option>
+                        </select>
+                        <button onclick="openGCalModal()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 flex items-center gap-2 shadow-md transition"><i data-lucide="plus" class="size-4"></i> <span data-i18n="cal_create">Buat</span></button>
+                    </div>
+                </div>
+
+                <div id="cal-month-view" class="flex-1 flex flex-col overflow-hidden">
+                    <div class="grid grid-cols-7 border-b border-border bg-white shrink-0">
+                        <div data-i18n="cal_sun" class="py-2 text-center text-xs font-medium text-secondary">MNG</div><div data-i18n="cal_mon" class="py-2 text-center text-xs font-medium text-secondary">SEN</div><div data-i18n="cal_tue" class="py-2 text-center text-xs font-medium text-secondary">SEL</div><div data-i18n="cal_wed" class="py-2 text-center text-xs font-medium text-secondary">RAB</div><div data-i18n="cal_thu" class="py-2 text-center text-xs font-medium text-secondary">KAM</div><div data-i18n="cal_fri" class="py-2 text-center text-xs font-medium text-secondary">JUM</div><div data-i18n="cal_sat" class="py-2 text-center text-xs font-medium text-secondary">SAB</div>
+                    </div>
+                    <div id="calendar-grid" class="flex-1 grid grid-cols-7 overflow-y-auto">
+                        </div>
+                </div>
+
+                <div id="cal-day-view" class="flex-1 hidden flex-col overflow-hidden bg-white">
+                    <div class="border-b border-border flex items-center pl-16 py-3 bg-white shrink-0">
+                        <div class="text-center w-12">
+                            <p class="text-xs font-semibold text-secondary uppercase mb-1" id="day-view-day">THU</p>
+                            <div class="size-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-xl mx-auto" id="day-view-date">19</div>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto relative w-full flex" id="day-hourly-container">
+                        <div class="w-16 shrink-0 border-r border-border bg-white text-xs text-secondary text-right pr-2 pt-2 relative z-10" id="day-time-labels">
+                            </div>
+                        <div class="flex-1 relative min-w-[500px]" id="day-grid-lines" onclick="calGridClick(event)">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<div id="section-habits" class="content-section hidden">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
+                <div>
+                    <h1 data-i18n="app_3" class="text-2xl md:text-3xl font-bold mb-1">Habit Tracker</h1>
+                    <p data-i18n="hb_desc" class="text-secondary text-sm">Bangun kebiasaan baik setiap harinya.</p>
+                </div>
+                <div class="flex gap-2">
+                     <button onclick="openModal('modal-habit')" class="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition shadow-md"><i data-lucide="plus" class="size-4"></i> <span data-i18n="hb_new">Habit Baru</span></button>
+                </div>
+            </div>
+
+            <div class="bg-white p-3 md:p-4 rounded-2xl border border-border mb-6 shadow-sm flex flex-col gap-3 overflow-hidden w-full">
+                <div class="flex items-center justify-between px-2">
+                    <button onclick="changeHabitMonth(-1)" class="p-1.5 hover:bg-gray-100 rounded-lg text-secondary hover:text-foreground transition cursor-pointer"><i data-lucide="chevron-left" class="size-5"></i></button>
+                    <h3 id="habit-month-title" class="font-bold text-foreground text-sm uppercase tracking-wide">Memuat...</h3>
+                    <button onclick="changeHabitMonth(1)" class="p-1.5 hover:bg-gray-100 rounded-lg text-secondary hover:text-foreground transition cursor-pointer"><i data-lucide="chevron-right" class="size-5"></i></button>
+                </div>
+                <div id="habit-date-navigator" class="flex gap-2 w-full overflow-x-auto snap-x scrollbar-hide pb-2 items-center">
+                    </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-orange-200/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                 <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-lg flex items-center gap-2 text-orange-700"><i data-lucide="sun" class="size-5"></i> <span data-i18n="hb_daily">Rutinitas Harian</span></h3>
+                    <button data-i18n="hb_all" class="text-xs font-bold bg-white text-orange-600 px-3 py-1 rounded-full shadow-sm border border-orange-100 habit-filter-time" data-time="morning">Lihat Semua</button>
+                </div>
+                <div id="habits-morning-container" class="space-y-3">
+                    </div>
+                <div class="mt-4 pt-4 border-t border-orange-100">
+                     <div id="habits-today-container" class="space-y-3">
+                         </div>
+                </div>
+            </div>
+            
+             <div class="mt-8">
+                <h3 data-i18n="hb_pop" class="font-bold text-sm mb-4 text-secondary uppercase tracking-wider">Paket Rutinitas Populer</h3>
+                <div id="habit-recommendations" class="flex overflow-x-auto gap-4 pb-4 snap-x">
+                    </div>
+            </div>
+        </div>
+
+<div id="section-todo" class="content-section hidden">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
+                <div>
+                    <h1 data-i18n="app_2" class="text-2xl md:text-3xl font-bold mb-1">To-Do List</h1>
+                    <p data-i18n="td_desc" class="text-secondary text-sm">Manajemen tugas dan deadline-mu.</p>
+                </div>
+                <div class="flex gap-2">
+                     <button onclick="openModal('modal-task')" class="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-sm"><i data-lucide="check-square" class="size-4"></i> <span data-i18n="td_new">Tugas Baru</span></button>
+                </div>
+            </div>
+
+            <div class="bg-white border border-border rounded-3xl p-6 shadow-sm h-full flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between mb-4 border-b border-border pb-4">
+                    <h3 class="font-bold text-lg flex items-center gap-2 text-foreground"><i data-lucide="list-todo" class="size-5 text-emerald-600"></i> <span data-i18n="td_list">Daftar Tugas Prioritas</span></h3>
+                    <span data-i18n="td_active" class="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg shadow-sm">Aktif</span>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <tbody id="tasks-table-body" class="divide-y divide-border">
+                            </tbody>
+                    </table>
+                </div>
+                <button onclick="openModal('modal-task')" data-i18n="td_add" class="w-full py-4 mt-6 border-2 border-dashed border-emerald-300 text-emerald-600 rounded-xl font-bold text-sm hover:bg-emerald-50 transition">+ Tambah Tugas Baru</button>
+            </div>
+        </div>
+
+<div id="section-roadmap" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
+                <div>
+                    <h1 data-i18n="rm_title" class="text-xl md:text-3xl font-bold mb-1">Peta Perjalanan Studi</h1>
+                    <p data-i18n="rm_desc" class="text-secondary text-sm">Visualisasikan target semestermu.</p>
+                </div>
+                <button onclick="openModal('modal-roadmap')" class="flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition cursor-pointer shadow-md"><i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="rm_add">Tambah Target</span></button>
+            </div>
+            
+            <div class="relative pl-4 md:pl-8">
+                 <div class="timeline-line bg-gray-200"></div>
+                 
+                 <div class="grid grid-cols-1 gap-6" id="roadmap-container">
+                     </div>
+            </div>
+        </div>
+        
+        
+
+<div id="section-dashboard" class="content-section hidden">
+            <div class="mb-6">
+                <h1 data-i18n="dash_title" class="text-2xl md:text-3xl font-bold text-foreground">Ringkasan Analitik</h1>
+                <p data-i18n="dash_desc" class="text-secondary text-sm">Statistik produktivitas dan pencapaian belajarmu di StuProd.</p>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+                    <i data-lucide="zap" class="absolute -right-4 -bottom-4 size-24 opacity-20 group-hover:scale-110 transition-transform"></i>
+                    <p data-i18n="stat_xp" class="text-white/80 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Total Poin / XP</p>
+                    <p class="text-3xl md:text-4xl font-black" id="stat-points">0</p>
+                    <p class="text-[10px] md:text-xs mt-2 bg-black/20 inline-block px-2.5 py-1 rounded-lg font-medium" id="stat-level">Level 1</p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+                    <i data-lucide="globe" class="absolute -right-4 -bottom-4 size-24 opacity-20 group-hover:scale-110 transition-transform"></i>
+                    <p data-i18n="stat_rank" class="text-white/80 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Global Rank</p>
+                    <p class="text-3xl md:text-4xl font-black" id="stat-rank">#--</p>
+                    <p data-i18n="stat_rank_sub" class="text-[10px] md:text-xs mt-2 bg-black/20 inline-block px-2.5 py-1 rounded-lg font-medium">Dari Seluruh User</p>
+                </div>
+                
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_pomo" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="timer" class="size-3.5 text-rose-500"></i> Fokus Pomodoro</p>
+                    <p class="text-3xl md:text-4xl font-bold text-foreground mt-auto" id="stat-pomodoro">0</p>
+                    <p data-i18n="stat_pomo_sub" class="text-xs text-secondary mt-1">Sesi Terselesaikan</p>
+                </div>
+                
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_pred" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="target" class="size-3.5 text-red-500"></i> Prediksi Ujian AI</p>
+                    <p class="text-3xl md:text-4xl font-bold text-foreground mt-auto" id="stat-predictions">0</p>
+                    <p data-i18n="stat_pred_sub" class="text-xs text-secondary mt-1">Koleksi Dibuat</p>
+                </div>
+
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_skripsi" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="graduation-cap" class="size-3.5 text-purple-600"></i> Proyek Skripsi</p>
+                    <p class="text-3xl md:text-4xl font-bold text-foreground mt-auto" id="stat-thesis">0</p>
+                    <p data-i18n="stat_skripsi_sub" class="text-xs text-secondary mt-1">Dokumen Riset</p>
+                </div>
+
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_drive" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="hard-drive" class="size-3.5 text-blue-500"></i> Drive Storage</p>
+                    <p class="text-3xl md:text-4xl font-bold text-foreground mt-auto" id="stat-drive">0</p>
+                    <p data-i18n="stat_drive_sub" class="text-xs text-secondary mt-1">File Terunggah</p>
+                </div>
+
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_workspace" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="layout" class="size-3.5 text-gray-700"></i> Ruang Kerja</p>
+                    <p class="text-3xl md:text-4xl font-bold text-foreground mt-auto" id="stat-workspace">0</p>
+                    <p data-i18n="stat_work_sub" class="text-xs text-secondary mt-1">Catatan & Board</p>
+                </div>
+
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_cal" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="calendar" class="size-3.5 text-green-600"></i> Agenda Kalender</p>
+                    <p class="text-3xl md:text-4xl font-bold text-foreground mt-auto" id="stat-calendar">0</p>
+                    <p data-i18n="stat_cal_sub" class="text-xs text-secondary mt-1">Event Tersimpan</p>
+                </div>
+
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_done" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="check-circle" class="size-3.5 text-success"></i> Tugas Selesai</p>
+                    <p class="text-3xl md:text-4xl font-bold text-success mt-auto" id="stat-tasks-done">0</p>
+                    <p data-i18n="stat_done_sub" class="text-xs text-secondary mt-1">To-Do Terselesaikan</p>
+                </div>
+
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_pend" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="clock" class="size-3.5 text-warning"></i> Tugas Pending</p>
+                    <p class="text-3xl md:text-4xl font-bold text-warning mt-auto" id="stat-tasks-pending">0</p>
+                    <p data-i18n="stat_pend_sub" class="text-xs text-secondary mt-1">Menunggu Eksekusi</p>
+                </div>
+
+                <div class="bg-white border border-border p-5 rounded-2xl shadow-sm flex flex-col">
+                    <p data-i18n="stat_fin" class="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><i data-lucide="wallet" class="size-3.5 text-blue-500"></i> Saldo Keuangan</p>
+                    <p class="text-2xl md:text-3xl font-bold text-blue-600 mt-auto" id="stat-balance">Rp 0</p>
+                    <p data-i18n="stat_fin_sub" class="text-xs text-secondary mt-1">Sisa Anggaran Aktif</p>
+                </div>
+
+                <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+                    <i data-lucide="graduation-cap" class="absolute -right-4 -bottom-4 size-24 opacity-20 group-hover:scale-110 transition-transform"></i>
+                    <p data-i18n="stat_ipk" class="text-white/80 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">IPK Saat Ini</p>
+                    <p class="text-3xl md:text-4xl font-black" id="stat-ipk">0.00</p>
+                    <p data-i18n="stat_ipk_sub" class="text-[10px] md:text-xs mt-2 bg-black/20 inline-block px-2.5 py-1 rounded-lg font-medium">Skala 4.00</p>
+                </div>
+            </div>
+        </div>
+        
+<div id="section-finance" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div><h1 data-i18n="fin_title" class="text-xl md:text-2xl font-bold mb-1">Siakunt (Keuangan)</h1></div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button onclick="openModalRAB()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-lg font-bold cursor-pointer text-sm transition shadow-sm"><i data-lucide="sheet" class="w-4 h-4"></i> <span data-i18n="fin_rab">Rencana Anggaran</span></button>
+                    <button onclick="openModal('modal-finance')" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium cursor-pointer text-sm shadow-sm"><i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="fin_new">Transaksi Baru</span></button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6 text-center">
+                <div class="bg-success-light border border-success/20 p-3 md:p-4 rounded-xl shadow-sm"><p data-i18n="fin_in" class="text-success-dark text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider">Pemasukan</p><p class="text-base md:text-lg font-bold text-success-dark" id="fin-income">Rp 0</p></div>
+                <div class="bg-error-light border border-error/20 p-3 md:p-4 rounded-xl shadow-sm"><p data-i18n="fin_out" class="text-error-dark text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider">Pengeluaran</p><p class="text-base md:text-lg font-bold text-error-dark" id="fin-expense">Rp 0</p></div>
+                <div class="bg-info-light border border-info/20 p-3 md:p-4 rounded-xl shadow-sm"><p data-i18n="fin_bal" class="text-info-dark text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider">Saldo</p><p class="text-base md:text-lg font-bold text-info-dark" id="fin-balance">Rp 0</p></div>
+            </div>
+            
+            <div class="bg-white rounded-xl border border-border overflow-x-auto shadow-sm w-full">
+                <table class="w-full text-sm min-w-[500px]">
+                    <thead class="bg-gray-50 border-b border-border">
+                        <tr><th data-i18n="fin_date" class="px-4 py-3 text-left font-semibold text-secondary">Tanggal</th><th data-i18n="fin_desc" class="w-1/2 px-4 py-3 text-left font-semibold text-secondary">Keterangan</th><th data-i18n="fin_amount" class="px-4 py-3 text-left font-semibold text-secondary">Jumlah</th><th data-i18n="fin_action" class="px-4 py-3 text-right font-semibold text-secondary">Aksi</th></tr>
+                    </thead>
+                    <tbody id="finance-table-body" class="divide-y divide-border"></tbody>
+                </table>
+            </div>
+        </div>
+
+<div id="section-iptracker" class="content-section hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4"><div><h1 data-i18n="ip_title" class="text-xl md:text-2xl font-bold mb-1">Kalkulator IPK</h1></div><button onclick="openModal('modal-iptracker')" class="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium cursor-pointer text-sm"><i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="ip_add">Tambah Nilai</span></button></div>
+            <div class="flex bg-info/10 border border-info/20 p-4 md:p-5 rounded-xl mb-4 md:mb-6 items-center justify-between shadow-sm"><div><p data-i18n="ip_cum" class="text-info-dark font-medium text-[10px] md:text-sm mb-1 uppercase tracking-wider">IP Kumulatif</p><p class="text-3xl md:text-4xl font-bold text-info-dark" id="ipk-display">0.00</p></div><div class="text-right"><p data-i18n="ip_sks" class="text-info-dark font-medium text-[10px] md:text-sm mb-1 uppercase tracking-wider">Total SKS</p><p class="text-xl md:text-2xl font-bold text-info-dark" id="sks-display">0</p></div></div>
+            <div id="iptracker-container" class="space-y-4 md:space-y-6"></div>
+        </div>
+        
+<div id="section-pomodoro" class="content-section hidden relative h-full min-h-[500px] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
+            <img src="https://img.pikbest.com/backgrounds/20250110/a-painting-of-purple-sky-with-mountains-and-trees_11363208.jpg!w700wp" alt="Lofi Study Vibes" class="absolute inset-0 w-full h-full object-cover z-0 filter brightness-[0.65]">
+            
+            <audio id="pomodoro-audio" loop preload="auto">
+                <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3" type="audio/mpeg">
+            </audio>
+
+            <div class="relative z-10 flex flex-col items-center justify-center h-full p-4 md:p-6">
+                <button onclick="togglePomodoroMusic()" id="btn-music-toggle" class="absolute top-4 right-4 md:top-8 md:right-8 flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-black/30 backdrop-blur-md border border-white/20 text-white rounded-full font-medium hover:bg-black/50 transition shadow-lg cursor-pointer z-20">
+                    <i data-lucide="volume-x" id="music-icon" class="size-4 md:size-5"></i> <span id="music-text" class="text-xs md:text-sm">BGM Off</span>
+                </button>
+
+                <div class="bg-white/10 backdrop-blur-xl border border-white/20 p-6 md:p-14 rounded-3xl md:rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,0.3)] flex flex-col items-center text-white text-center w-full max-w-lg mx-auto">
+                    <h1 data-i18n="pomo_title" class="text-xl md:text-3xl font-bold mb-1 md:mb-2 tracking-wider flex items-center gap-2 md:gap-3"><i data-lucide="sparkles" class="text-yellow-300 size-5 md:size-6"></i> Fokus Belajar</h1>
+                    <p data-i18n="pomo_desc" class="text-white/80 text-xs md:text-base mb-6 md:mb-10 font-medium">Selesaikan sesi (25 Menit) = +10 Poin!</p>
+                    
+                    <div class="relative flex items-center justify-center w-48 h-48 sm:w-56 sm:h-56 md:w-72 md:h-72 rounded-full border-[6px] md:border-[10px] border-white/40 shadow-[0_0_60px_rgba(255,255,255,0.1)] mb-8 md:mb-10 bg-black/10 backdrop-blur-sm">
+                        <span id="timer-display" class="text-5xl sm:text-6xl md:text-8xl font-bold font-mono tracking-widest drop-shadow-lg text-white">25:00</span>
+                    </div>
+
+                    <div class="flex gap-3 md:gap-4 w-full justify-center">
+                        <button id="btn-timer-start" class="flex-1 max-w-[140px] md:max-w-[160px] py-3 md:py-4 bg-white text-gray-900 rounded-xl md:rounded-2xl font-black text-base md:text-lg hover:-translate-y-1 transition-all shadow-[0_10px_20px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 cursor-pointer">
+                            <i data-lucide="play" id="timer-icon-start" class="size-4 md:size-5 fill-current"></i> <span data-i18n="pomo_start" id="timer-text-start">Start</span>
+                        </button>
+                        <button id="btn-timer-reset" class="flex-1 max-w-[100px] md:max-w-[120px] py-3 md:py-4 bg-white/20 border border-white/30 text-white rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:bg-white/30 transition-all shadow-lg flex items-center justify-center gap-1 md:gap-2 cursor-pointer">
+                            <i data-lucide="rotate-ccw" class="size-4 md:size-5"></i> <span data-i18n="pomo_reset">Reset</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<div id="section-leaderboard" class="content-section hidden">
+            <div class="bg-white p-6 md:p-8 rounded-3xl border border-border shadow-sm min-h-[calc(100vh-140px)] flex flex-col">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 shrink-0">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-3 text-foreground">
+                            <i data-lucide="trophy" class="text-orange-500 size-8"></i> <span data-i18n="lb_title">Leaderboard</span>
+                        </h1>
+                        <p data-i18n="lb_desc" class="text-secondary text-sm mt-2">Top 50 pelajar terbaik</p>
+                    </div>
+                    
+                    <div class="flex bg-gray-100 border border-border p-1.5 rounded-xl gap-1 shadow-inner">
+                        <button id="btn-sort-points" onclick="toggleLeaderboardSort('points')" class="px-5 py-2 rounded-lg bg-white text-orange-600 shadow-sm font-bold text-sm flex items-center gap-2 transition cursor-pointer">
+                            <i data-lucide="zap" class="size-4 fill-current"></i> <span data-i18n="lb_xp">Total XP</span>
+                        </button>
+                        <button id="btn-sort-streak" onclick="toggleLeaderboardSort('streak')" class="px-5 py-2 rounded-lg text-secondary hover:bg-gray-200 hover:text-foreground font-bold text-sm flex items-center gap-2 transition cursor-pointer">
+                            <i data-lucide="flame" class="size-4 fill-current"></i> <span data-i18n="lb_streak">Streak</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="leaderboard-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 content-start overflow-y-auto pr-2 custom-scrollbar">
+                    </div>
+            </div>
+        </div>
+        
+<div id="section-profile" class="content-section hidden space-y-6 pb-20">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+        <div class="h-32 bg-gradient-to-r from-emerald-500 to-teal-600 relative">
+            <i data-lucide="code" class="absolute -bottom-4 -right-4 size-32 text-white opacity-10"></i>
+        </div>
+        
+        <div class="px-6 sm:px-8 pb-8 relative">
+            <div class="flex flex-col sm:flex-row sm:items-end gap-5 -mt-12 sm:-mt-16 mb-4">
+                <div class="relative inline-block">
+                    <img id="profile-avatar" src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff&size=128" alt="Profile" class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl border-4 border-white shadow-md object-cover">
+                </div>
+                
+                <div class="flex-1 pb-2">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h2 id="profile-name" class="text-2xl font-black text-gray-800 tracking-tight">Memuat...</h2>
+                            
+                            <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                                <p class="text-gray-500 font-bold text-sm flex items-center">
+                                    @<span id="profile-username">username</span>
+                                </p>
+                                <span class="w-1.5 h-1.5 bg-gray-300 rounded-full"></span> <p class="text-emerald-600 font-medium text-sm flex items-center gap-1">
+                                    <i data-lucide="terminal-square" class="size-4"></i>
+                                    <span id="profile-role">Memuat...</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-xs font-bold border border-green-200 w-max">
+                            <span class="relative flex h-2.5 w-2.5">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                            </span>
+                            <span data-i18n="prof_active">Mahasiswa Aktif</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 mt-2">
+                <span class="flex items-center gap-1.5"><i data-lucide="map-pin" class="size-4"></i> <span id="profile-location">-</span></span>
+                <span class="flex items-center gap-1.5"><i data-lucide="fingerprint" class="size-4"></i> UID: <span id="profile-uid" class="font-mono text-xs">...</span></span>
+            </div>
+            
+            <div class="flex items-center gap-3 mt-5">
+                <a id="profile-github" href="#" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold transition-colors border border-gray-200">
+                    <i data-lucide="github" class="size-4"></i> GitHub
+                </a>
+                <a id="profile-portfolio" href="#" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold transition-colors border border-gray-200">
+                    <i data-lucide="link" class="size-4"></i> Portfolio
+                </a>
+                <button id="btn-edit-profile" class="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-sm font-semibold transition-colors border border-emerald-200 cursor-pointer">
+                    <i data-lucide="user-cog" class="size-4"></i> <span data-i18n="prof_edit">Edit Profil</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i data-lucide="graduation-cap" class="size-5 text-emerald-500"></i> <span data-i18n="prof_aca">Etalase Akademik</span>
+            </h3>
+            
+            <div class="space-y-4">
+                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p data-i18n="prof_uni" class="text-[10px] uppercase text-gray-500 font-bold mb-1">Universitas</p>
+                    <p id="profile-university" class="font-semibold text-gray-800">-</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <p data-i18n="prof_major" class="text-[10px] uppercase text-gray-500 font-bold mb-1">Program Studi</p>
+                        <p id="profile-major" class="font-semibold text-gray-800">-</p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <p data-i18n="prof_stat" class="text-[10px] uppercase text-gray-500 font-bold mb-1">Status</p>
+                        <p data-i18n="prof_active" class="font-semibold text-emerald-600">Aktif</p>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <p data-i18n="prof_org" class="text-xs font-bold text-gray-500 mb-2">Aktivitas & Organisasi</p>
+                    <div id="profile-org-tags" class="flex flex-wrap gap-2">
+                        <span data-i18n="prof_nodata" class="text-xs text-gray-400 italic">Belum ada data</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="target" class="size-5 text-emerald-500"></i> <span data-i18n="prof_vision">Papan Visi</span>
+                    </h3>
+                </div>
+                
+                <div class="mb-5">
+                    <div class="flex justify-between items-end mb-2">
+                        <p data-i18n="prof_tar_ipk" class="text-xs font-bold text-gray-500">Target IPK Kelulusan</p>
+                        <p class="text-sm font-black text-gray-800"><span id="profile-ipk-current" class="text-emerald-500">0.00</span> / <span id="profile-target-ipk">4.00</span></p>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                        <div id="profile-ipk-bar" class="bg-gradient-to-r from-emerald-400 to-teal-500 h-2.5 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-5 p-4 border border-dashed border-gray-200 rounded-xl flex items-center gap-4">
+                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <i data-lucide="calendar-check" class="size-6"></i>
+                    </div>
+                    <div>
+                        <p data-i18n="prof_est" class="text-[10px] uppercase font-bold text-gray-500">Estimasi Kelulusan</p>
+                        <p id="profile-target-grad" class="font-black text-gray-800">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-100">
+                <div class="flex justify-between items-center mb-2">
+                    <p data-i18n="prof_tar_study" class="text-xs font-bold text-gray-500">Target Belajar Mingguan</p>
+                    <p class="text-xs font-bold text-emerald-600"><span id="profile-target-study">0</span> <span data-i18n="prof_hr">Jam</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-3">
+            <div>
+                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="activity" class="size-5 text-emerald-500"></i> <span data-i18n="prof_track">Rekam Jejak Aktivitas</span>
+                </h3>
+                <p data-i18n="prof_track_desc" class="text-xs text-gray-500 mt-1">Konsistensimu menyelesaikan target harian dalam 3 bulan terakhir.</p>
+            </div>
+            
+            <div class="text-[10px] text-gray-500 font-bold flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                <span data-i18n="prof_chill">Santai</span> 
+                <div class="flex gap-1 mx-1">
+                    <span class="size-3 rounded-sm bg-gray-100"></span>
+                    <span class="size-3 rounded-sm bg-emerald-200"></span>
+                    <span class="size-3 rounded-sm bg-emerald-400"></span>
+                    <span class="size-3 rounded-sm bg-emerald-600"></span>
+                    <span class="size-3 rounded-sm bg-emerald-800"></span>
+                </div>
+                <span data-i18n="prof_fire">On Fire!</span>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto pb-4 custom-scrollbar">
+            <div id="profile-heatmap" class="min-w-max">
+                <div class="flex items-center justify-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <p data-i18n="prof_load" class="text-xs text-emerald-600 font-bold animate-pulse flex items-center gap-2">
+                        <i data-lucide="loader-2" class="size-4 animate-spin"></i> Merakit Data...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="section-studyroom" class="content-section hidden flex-col h-[calc(100vh-140px)]">
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 shrink-0">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold mb-1 text-foreground flex items-center gap-2"><i data-lucide="users" class="text-indigo-600 size-8"></i> <span data-i18n="nav_study">Social & Study Room</span></h1>
+                    <p data-i18n="sr_desc" class="text-secondary text-sm">Cari teman, buat grup, dan kolaborasi tugas bersama.</p>
+                </div>
+                <div class="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto shrink-0 border border-border">
+                    <button onclick="switchStudyTab('friends')" id="tab-btn-friends" class="flex-1 sm:flex-none px-6 py-2 rounded-lg bg-white shadow-sm font-bold text-sm text-indigo-600 transition cursor-pointer"><span data-i18n="sr_friends">Teman</span></button>
+                    <button onclick="switchStudyTab('groups')" id="tab-btn-groups" class="flex-1 sm:flex-none px-6 py-2 rounded-lg text-secondary hover:text-foreground font-bold text-sm transition cursor-pointer"><span data-i18n="sr_groups">Grup Belajar</span></button>
+                </div>
+            </div>
+
+            <div id="study-tab-friends" class="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+                <div class="w-full md:w-1/3 flex flex-col gap-6 shrink-0 overflow-y-auto custom-scrollbar pr-2">
+                    <div class="bg-white p-5 rounded-2xl border border-border shadow-sm">
+                        <h3 data-i18n="sr_search" class="font-bold text-sm mb-3">Cari Teman (Username / UID)</h3>
+                        <div class="flex gap-2">
+                            <input data-i18n-placeholder="sr_search_ph" type="text" id="search-friend-input" class="flex-1 bg-gray-50 border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Masukkan ID/Nama...">
+                            <button onclick="searchUsers()" class="bg-indigo-600 text-white p-2.5 rounded-xl hover:bg-indigo-700 transition cursor-pointer shadow-md"><i data-lucide="search" class="size-4"></i></button>
+                        </div>
+                        <div id="search-friend-result" class="mt-4 space-y-2"></div>
+                    </div>
+                    
+                    <div class="bg-white p-5 rounded-2xl border border-border shadow-sm flex-1">
+                        <h3 class="font-bold text-sm mb-3 flex items-center justify-between"><span data-i18n="sr_req">Permintaan Teman</span> <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px]" id="req-count">0</span></h3>
+                        <div id="friend-requests-list" class="space-y-3">
+                            <p data-i18n="sr_req_empty" class="text-xs text-secondary text-center py-4">Tidak ada permintaan baru.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white border border-border rounded-2xl p-6 shadow-sm overflow-y-auto custom-scrollbar">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="user-check" class="size-5 text-success"></i> <span data-i18n="sr_list">Daftar Teman</span></h3>
+                    <div id="friends-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <p data-i18n="sr_list_empty" class="text-sm text-secondary col-span-full py-10 text-center">Belum ada teman. Ayo cari teman belajar!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="study-tab-groups" class="hidden flex-1 flex-col overflow-hidden">
+                <div id="groups-list-view" class="flex-1 flex flex-col">
+                    <div class="flex justify-end mb-4 shrink-0">
+                        <button onclick="openCreateGroupModal()" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition shadow-md cursor-pointer"><i data-lucide="plus" class="size-4"></i> <span data-i18n="sr_grp_new">Bentuk Grup Baru</span></button>
+                    </div>
+                    <div id="groups-grid" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-5 overflow-y-auto pb-6 custom-scrollbar">
+                        </div>
+                </div>
+
+                <div id="group-room-view" class="hidden flex-1 flex-col md:flex-row bg-white border border-border rounded-2xl overflow-hidden shadow-sm">
+                    <div class="w-full md:w-[350px] border-r border-border flex flex-col bg-gray-50/50 shrink-0">
+                        <div class="p-4 border-b border-border bg-white flex items-center gap-3 shrink-0">
+                            <button onclick="closeGroupRoom()" class="p-1.5 hover:bg-gray-100 rounded-lg text-secondary cursor-pointer transition"><i data-lucide="arrow-left" class="size-5"></i></button>
+                            <div>
+                                <h3 class="font-bold text-foreground line-clamp-1" id="room-title">Nama Grup</h3>
+                                <p class="text-[10px] text-green-500 font-bold flex items-center gap-1"><span class="size-1.5 rounded-full bg-green-500"></span> Live Chat</p>
+                            </div>
+                        </div>
+                        <div id="group-chat-box" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col custom-scrollbar">
+                            </div>
+                        <div class="p-3 bg-white border-t border-border shrink-0">
+                            <form id="form-group-chat" class="flex gap-2">
+                                <input data-i18n-placeholder="sr_chat_ph" type="text" id="group-chat-input" class="flex-1 bg-gray-100 border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:bg-white focus:border-indigo-500 transition" placeholder="Ketik pesan..." required autocomplete="off">
+                                <button type="submit" class="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 cursor-pointer shadow-sm transition"><i data-lucide="send" class="size-4"></i></button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col bg-white overflow-hidden relative">
+                        <div class="p-4 border-b border-border flex items-center justify-between shrink-0 bg-white z-10">
+                            <div class="flex items-center gap-3">
+                                <h3 data-i18n="sr_board" class="font-bold text-foreground">Papan Tugas</h3>
+                                <button onclick="openInviteGroupModal()" class="px-3 py-1 bg-indigo-50 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 hover:bg-indigo-100 transition shadow-sm cursor-pointer"><i data-lucide="user-plus" class="size-3 inline mr-1"></i> <span data-i18n="sr_invite">Undang Teman</span></button>
+                            </div>
+                            <button onclick="openGroupTaskModal()" class="text-xs font-bold text-white bg-gray-800 px-3 py-1.5 rounded-xl hover:bg-black transition cursor-pointer flex items-center gap-1 shadow-sm"><i data-lucide="plus" class="size-3"></i> <span data-i18n="td_new">Buat Tugas</span></button>
+                        </div>
+                        
+                        <div class="flex-1 overflow-x-auto overflow-y-auto p-4 md:p-6 bg-gray-50 flex gap-4 md:gap-6 items-start custom-scrollbar" id="group-kanban-board">
+                            <div class="flex flex-col bg-gray-100/50 rounded-xl border border-gray-200 min-w-[260px] w-[260px] shrink-0 p-3 h-max" ondrop="dropGroupTask(event, 'todo')" ondragover="allowDropGroupTask(event)">
+                                <div class="flex items-center justify-between mb-3 px-1"><span class="font-bold text-sm text-secondary">To Do</span></div>
+                                <div class="flex-1 space-y-2 min-h-[100px]" id="gcol-todo"></div>
+                            </div>
+                            <div class="flex flex-col bg-blue-50/50 rounded-xl border border-blue-100 min-w-[260px] w-[260px] shrink-0 p-3 h-max" ondrop="dropGroupTask(event, 'progress')" ondragover="allowDropGroupTask(event)">
+                                <div class="flex items-center justify-between mb-3 px-1"><span class="font-bold text-sm text-blue-600">In Progress</span></div>
+                                <div class="flex-1 space-y-2 min-h-[100px]" id="gcol-progress"></div>
+                            </div>
+                            <div class="flex flex-col bg-green-50/50 rounded-xl border border-green-100 min-w-[260px] w-[260px] shrink-0 p-3 h-max" ondrop="dropGroupTask(event, 'done')" ondragover="allowDropGroupTask(event)">
+                                <div class="flex items-center justify-between mb-3 px-1"><span class="font-bold text-sm text-green-600">Done</span></div>
+                                <div class="flex-1 space-y-2 min-h-[100px]" id="gcol-done"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<div id="section-settings" class="content-section hidden space-y-6 pb-20 max-w-4xl mx-auto animate-fade-in-up">
+    
+    <div class="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+        <i data-lucide="settings-2" class="absolute -right-4 -bottom-4 size-32 text-white opacity-10"></i>
+        <h2 data-i18n="set_title" class="text-2xl font-black relative z-10">Pengaturan Sistem</h2>
+        <p data-i18n="set_desc" class="text-gray-300 text-sm mt-1 relative z-10">Sesuaikan tampilan, bahasa, dan preferensi aplikasimu di sini.</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+        <h3 class="font-bold text-gray-800 text-lg flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
+            <i data-lucide="palette" class="size-5 text-indigo-500"></i> <span data-i18n="set_theme">Personalisasi & Tampilan</span>
+        </h3>
+        
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 data-i18n="set_mode" class="font-bold text-sm text-gray-800">Mode Tampilan</h4>
+                    <p data-i18n="set_mode_desc" class="text-xs text-gray-500 mt-0.5">Pilih tema terang atau gelap.</p>
+                </div>
+                <div class="flex bg-gray-100 p-1 rounded-lg">
+                    <button id="btn-theme-light" class="px-4 py-1.5 bg-white shadow-sm rounded-md text-sm font-bold text-gray-800 flex items-center gap-2 transition-all"><i data-lucide="sun" class="size-4"></i> <span data-i18n="set_light">Terang</span></button>
+                    <button id="btn-theme-dark" class="px-4 py-1.5 text-gray-500 hover:text-gray-800 text-sm font-bold flex items-center gap-2 transition-all cursor-pointer"><i data-lucide="moon" class="size-4"></i> <span data-i18n="set_dark">Gelap</span></button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 data-i18n="set_color" class="font-bold text-sm text-gray-800">Warna Aksen Utama</h4>
+                    <p data-i18n="set_color_desc" class="text-xs text-gray-500 mt-0.5">Warna dominan untuk tombol.</p>
+                </div>
+                <div class="flex gap-2" id="color-theme-container">
+                    <button data-color="emerald" class="theme-color-btn size-6 rounded-full bg-emerald-500 ring-2 ring-offset-2 ring-emerald-500 cursor-pointer transition-all"></button>
+                    <button data-color="indigo" class="theme-color-btn size-6 rounded-full bg-indigo-500 hover:scale-110 cursor-pointer transition-all"></button>
+                    <button data-color="blue" class="theme-color-btn size-6 rounded-full bg-blue-500 hover:scale-110 cursor-pointer transition-all"></button>
+                    <button data-color="orange" class="theme-color-btn size-6 rounded-full bg-orange-500 hover:scale-110 cursor-pointer transition-all"></button>
+                    <button data-color="rose" class="theme-color-btn size-6 rounded-full bg-rose-500 hover:scale-110 cursor-pointer transition-all"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+        <h3 class="font-bold text-gray-800 text-lg flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
+            <i data-lucide="globe" class="size-5 text-indigo-500"></i> <span data-i18n="set_lang">Bahasa Aplikasi</span>
+        </h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <label class="flex items-center gap-3 p-3 border border-indigo-500 bg-indigo-50 rounded-xl cursor-pointer transition">
+                <input type="radio" name="lang" value="id" checked class="accent-indigo-600"> <span class="text-sm font-bold text-indigo-800">🇮🇩 Indonesia</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 border border-gray-200 hover:border-gray-300 rounded-xl cursor-pointer transition">
+                <input type="radio" name="lang" value="en" class="accent-indigo-600"> <span class="text-sm font-semibold text-gray-700">🇬🇧 English</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 border border-gray-200 hover:border-gray-300 rounded-xl cursor-pointer transition">
+                <input type="radio" name="lang" value="ar" class="accent-indigo-600"> <span class="text-sm font-semibold text-gray-700">🇸🇦 العربية (Arab)</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 border border-gray-200 hover:border-gray-300 rounded-xl cursor-pointer transition">
+                <input type="radio" name="lang" value="jp" class="accent-indigo-600"> <span class="text-sm font-semibold text-gray-700">🇯🇵 日本語 (Jepang)</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 border border-gray-200 hover:border-gray-300 rounded-xl cursor-pointer transition">
+                <input type="radio" name="lang" value="kr" class="accent-indigo-600"> <span class="text-sm font-semibold text-gray-700">🇰🇷 한국어 (Korea)</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 border border-gray-200 hover:border-gray-300 rounded-xl cursor-pointer transition">
+                <input type="radio" name="lang" value="es" class="accent-indigo-600"> <span class="text-sm font-semibold text-gray-700">🇪🇸 Español</span>
+            </label>
+        </div>
+    </div>
+
+<div class="mb-8">
+    <h3 class="text-xl font-bold text-foreground mb-6 flex items-center gap-2 border-b border-border pb-3">
+        <i data-lucide="life-buoy" class="size-5 text-indigo-500"></i> 
+        <span data-i18n="help_title">Bantuan & Laporan</span>
+    </h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+            <form id="form-report" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-secondary mb-1" data-i18n="help_category_label">Kategori Pesan</label>
+                    <select id="report-category" class="w-full border border-border rounded-lg px-3 py-2 text-sm bg-gray-50 outline-none focus:border-indigo-500">
+                        <option value="bug" data-i18n="help_cat_bug">Laporkan Bug / Error</option>
+                        <option value="feature" data-i18n="help_cat_feature">Saran Fitur Baru</option>
+                        <option value="other" data-i18n="help_cat_other">Lainnya</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-secondary mb-1" data-i18n="help_msg_label">Pesan Anda</label>
+                    <textarea id="report-message" rows="4" class="w-full border border-border rounded-lg px-3 py-2 text-sm bg-gray-50 outline-none focus:border-indigo-500" placeholder="Jelaskan secara detail..." data-i18n-placeholder="help_msg_placeholder"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-[#111827] text-white font-bold py-2.5 rounded-lg hover:bg-gray-800 transition">
+                    <span data-i18n="help_btn_send">Kirim Laporan</span>
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <h4 class="text-sm font-bold text-foreground mb-3" data-i18n="help_faq_title">FAQ (Pertanyaan Umum)</h4>
+            <div class="space-y-2">
+                <details class="group border border-border bg-gray-50 rounded-lg [&_summary::-webkit-details-marker]:hidden">
+                    <summary class="flex cursor-pointer items-center justify-between gap-1.5 p-3 text-sm text-foreground font-medium">
+                        <span data-i18n="faq_1_q">Data saya disimpan di mana?</span>
+                        <i data-lucide="chevron-down" class="size-4 shrink-0 transition duration-300 group-open:-rotate-180"></i>
+                    </summary>
+                    <p class="px-3 pb-3 text-xs text-secondary leading-relaxed" data-i18n="faq_1_a">Seluruh data Anda disimpan secara aman menggunakan sistem cloud database (Supabase) dengan enkripsi standar industri.</p>
+                </details>
+                <details class="group border border-border bg-gray-50 rounded-lg [&_summary::-webkit-details-marker]:hidden">
+                    <summary class="flex cursor-pointer items-center justify-between gap-1.5 p-3 text-sm text-foreground font-medium">
+                        <span data-i18n="faq_2_q">Apakah aplikasi ini gratis?</span>
+                        <i data-lucide="chevron-down" class="size-4 shrink-0 transition duration-300 group-open:-rotate-180"></i>
+                    </summary>
+                    <p class="px-3 pb-3 text-xs text-secondary leading-relaxed" data-i18n="faq_2_a">Ya, saat ini semua fitur dasar dapat digunakan secara gratis untuk membantu produktivitas belajar Anda.</p>
+                </details>
+                <details class="group border border-border bg-gray-50 rounded-lg [&_summary::-webkit-details-marker]:hidden">
+                    <summary class="flex cursor-pointer items-center justify-between gap-1.5 p-3 text-sm text-foreground font-medium">
+                        <span data-i18n="faq_3_q">Bagaimana cara menggunakan fitur AI?</span>
+                        <i data-lucide="chevron-down" class="size-4 shrink-0 transition duration-300 group-open:-rotate-180"></i>
+                    </summary>
+                    <p class="px-3 pb-3 text-xs text-secondary leading-relaxed" data-i18n="faq_3_a">Anda cukup memasukkan instruksi atau file ke dalam form yang tersedia, lalu sistem AI kami akan otomatis memproses dan memberikan hasilnya.</p>
+                </details>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+        <h3 class="font-bold text-gray-800 text-lg flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
+            <i data-lucide="info" class="size-5 text-indigo-500"></i> <span data-i18n="set_info">Informasi & Legal</span>
+        </h3>
+        <div class="flex flex-col sm:flex-row gap-4 justify-between items-center">
+            <div class="text-center sm:text-left">
+                <h4 class="font-black text-gray-800 text-lg">Student Workspace <span class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-md align-top">v2.1.0</span></h4>
+                <p class="text-xs text-gray-500 mt-1">Dibuat dengan ❤️ untuk Mahasiswa Indonesia.</p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button onclick="openModal('modal-about')" class="text-sm font-semibold text-indigo-600 hover:underline cursor-pointer"><span data-i18n="set_about">Tentang Aplikasi</span></button>
+                <button onclick="openModal('modal-privacy')" class="text-sm font-semibold text-indigo-600 hover:underline cursor-pointer"><span data-i18n="set_privacy">Kebijakan Privasi</span></button>
+                <button onclick="openModal('modal-terms')" class="text-sm font-semibold text-indigo-600 hover:underline cursor-pointer"><span data-i18n="set_terms">Syarat & Ketentuan</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="section-studywithopang" class="content-section hidden flex-col h-[calc(100vh-140px)]">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="size-10 bg-violet-600 rounded-xl flex items-center justify-center shrink-0"><i data-lucide="brain" class="size-6 text-white"></i></div>
+            <div><h1 class="text-xl md:text-2xl font-bold mb-0.5">StudyWithOpang <span class="text-[10px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full ml-2 uppercase font-bold">AI Suite</span></h1><p data-i18n="so_desc" class="text-secondary text-xs">Ruang belajar terpadu ditenagai oleh AI.</p></div>
+        </div>
+        <button class="nav-btn flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-white border border-border text-foreground rounded-xl font-medium hover:bg-gray-50 transition-all cursor-pointer text-sm shadow-sm" data-target="apps"><i data-lucide="arrow-left" class="size-4"></i> <span data-i18n="btn_back">Kembali</span></button>
+    </div>
+    <div class="flex-1 flex flex-col md:flex-row bg-white border border-border rounded-2xl overflow-hidden shadow-sm relative">
+        <aside class="w-full md:w-[220px] bg-gray-50 border-b md:border-b-0 md:border-r border-border flex flex-row md:flex-col p-3 shrink-0 overflow-x-auto md:overflow-y-auto scrollbar-hide">
+            <nav class="flex md:flex-col gap-2 w-full min-w-max md:min-w-0" id="study-nav">
+                <button data-tab="tab-documents" class="study-tab flex items-center gap-3 px-4 py-3 rounded-xl text-left bg-[#F97316] text-white shadow-md transition cursor-pointer font-medium text-sm w-full"><i data-lucide="folder-open" class="size-5"></i> <span data-i18n="so_tab_doc">Dokumen</span></button>
+                <button data-tab="tab-note" class="study-tab hidden flex items-center gap-3 px-4 py-3 rounded-xl text-left text-secondary hover:bg-gray-200 transition cursor-pointer font-medium text-sm w-full" id="nav-note"><i data-lucide="notepad-text" class="size-5"></i> <span data-i18n="so_tab_note">Note & Tutor</span></button>
+                <button data-tab="tab-mindmap" class="study-tab hidden flex items-center gap-3 px-4 py-3 rounded-xl text-left text-secondary hover:bg-gray-200 transition cursor-pointer font-medium text-sm w-full" id="nav-mindmap"><i data-lucide="git-merge" class="size-5"></i> <span data-i18n="so_tab_mm">Mind Map</span></button>
+                <button data-tab="tab-flashcards" class="study-tab hidden flex items-center gap-3 px-4 py-3 rounded-xl text-left text-secondary hover:bg-gray-200 transition cursor-pointer font-medium text-sm w-full" id="nav-flashcards"><i data-lucide="credit-card" class="size-5"></i> <span data-i18n="so_tab_fc">Flashcards</span></button>
+                <button data-tab="tab-quiz" class="study-tab hidden flex items-center gap-3 px-4 py-3 rounded-xl text-left text-secondary hover:bg-gray-200 transition cursor-pointer font-medium text-sm w-full" id="nav-quiz"><i data-lucide="message-square-text" class="size-5"></i> <span data-i18n="so_tab_quiz">Kuis AI</span></button>
+            </nav>
+        </aside>
+        
+        <div class="flex-1 relative overflow-hidden flex flex-col bg-white">
+            <div id="tab-documents" class="tab-content h-full flex flex-col items-center justify-center p-6 bg-white overflow-y-auto">
+                <div class="max-w-md w-full text-center">
+                    <div class="size-20 bg-violet-50 rounded-full flex items-center justify-center mx-auto mb-6"><i data-lucide="file-up" class="size-10 text-violet-600"></i></div>
+                    <h2 data-i18n="so_up_title" class="text-2xl font-bold mb-2">Upload Materi Kuliah</h2>
+                    <p data-i18n="so_up_desc" class="text-secondary text-sm mb-8">Upload PDF/TXT/Foto materi. AI akan menyulapnya menjadi Catatan, Mind Map, Flashcards, dan Kuis.</p>
+                    <input type="file" id="upload-doc" accept=".txt,.pdf,.png,.jpg,.jpeg,.webp" class="hidden">
+                    <label for="upload-doc" data-i18n="so_btn_analisa" class="w-full py-4 bg-primary text-white rounded-xl font-bold text-base hover:bg-primary-hover transition cursor-pointer block mb-3 shadow-lg">Mulai Analisis Dokumen</label>
+                    <p data-i18n="so_up_support" class="text-xs text-secondary italic" id="upload-status">Mendukung: PDF, TXT, PNG, JPG.</p>
+                </div>
+            </div>
+            
+            <div id="tab-note" class="tab-content h-full hidden flex-col lg:flex-row">
+                <div class="flex-[6] h-full flex flex-col border-b lg:border-b-0 lg:border-r border-border bg-white">
+                    <div class="h-14 border-b border-border flex items-center justify-between px-6 bg-gray-50 shrink-0 gap-2 w-full">
+                        <div class="flex items-center gap-2">
+                            <button onclick="formatDoc('bold')" class="p-1.5 hover:bg-gray-200 rounded text-secondary" title="Bold"><i data-lucide="bold" class="size-4"></i></button>
+                            <button onclick="formatDoc('italic')" class="p-1.5 hover:bg-gray-200 rounded text-secondary" title="Italic"><i data-lucide="italic" class="size-4"></i></button>
+                            <div class="w-px h-5 bg-border mx-1"></div>
+                            <h3 class="font-bold text-sm text-secondary ml-2">Smart Note</h3>
+                        </div>
+                        <button onclick="exportNoteToWorkspace()" class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-bold transition shadow-sm cursor-pointer"><i data-lucide="layout" class="size-3.5"></i> Export ke Ruang Kerja</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-6 lg:p-10">
+                        <div id="ai-note-editor" contenteditable="true" class="editor-content w-full h-full outline-none text-sm text-gray-800"><p class="text-gray-400 italic">Menganalisis dokumen...</p></div>
+                    </div>
+                </div>
+                <div class="flex-[4] h-full flex flex-col bg-muted relative">
+                    <div class="h-14 border-b border-border flex items-center px-4 bg-white shrink-0"><h3 class="font-bold text-sm flex items-center gap-2 text-primary"><i data-lucide="bot" class="size-5"></i> Opang Tutor</h3></div>
+                    <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages"><div class="text-center text-xs text-secondary mt-10">Tanyakan sesuatu!</div></div>
+                    <div class="p-4 bg-white border-t border-border shrink-0">
+                        <div class="relative"><input type="text" id="chat-input" placeholder="Tanya Opang..." class="w-full pl-4 pr-12 py-3.5 rounded-xl border border-border outline-none focus:border-primary text-sm bg-muted focus:bg-white transition-colors"><button onclick="sendChat()" class="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-primary text-white rounded-lg hover:bg-primary-hover transition cursor-pointer"><i data-lucide="send" class="size-4"></i></button></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tab-mindmap" class="tab-content h-full hidden flex-col bg-muted">
+                <div class="h-16 flex items-center justify-between px-6 bg-white border-b border-border shrink-0">
+                    <div><h2 class="font-bold text-lg">AI Mind Map</h2><p class="text-xs text-secondary">Peta konsep otomatis.</p></div>
+                    <button onclick="generateMindMap()" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover cursor-pointer shadow-sm" id="btn-generate-mindmap"><i data-lucide="refresh-cw" class="size-4 inline mr-1"></i> Generate AI</button>
+                </div>
+                <div class="flex-1 overflow-auto p-6 flex items-center justify-center bg-white" id="mindmap-container">
+                    <div class="text-center text-secondary"><i data-lucide="git-merge" class="size-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">Klik "Generate AI".</p></div>
+                </div>
+            </div>
+            
+            <div id="tab-flashcards" class="tab-content h-full hidden flex-col bg-[#1E1F29] text-white">
+                <div class="h-16 flex items-center justify-between px-6 border-b border-gray-800 shrink-0">
+                    <h2 class="font-bold text-lg">Smart Flashcards</h2>
+                    <div class="flex gap-2"><button onclick="autoGenerateFlashcards()" class="px-4 py-2.5 bg-[#F97316] text-white rounded-lg text-sm font-medium hover:bg-orange-600 cursor-pointer shadow-sm" id="btn-ai-flashcard"><i data-lucide="sparkles" class="size-4 inline mr-1"></i> Generate AI</button></div>
+                </div>
+                <div class="flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center justify-center p-6 relative">
+                    <div class="perspective w-full max-w-2xl aspect-[4/3] max-h-[500px] relative">
+                        <div id="flashcard-flipper" class="w-full h-full absolute transform-style-3d transition-transform duration-500 cursor-pointer" onclick="flipCurrentCard()">
+                            <div id="card-front" class="absolute inset-0 bg-[#2A2B36] rounded-[2rem] border border-gray-700 p-8 flex flex-col backface-hidden shadow-2xl">
+                                <div class="flex justify-between items-start w-full"><span class="px-4 py-1.5 rounded-full bg-white/10 text-xs font-bold tracking-wider opacity-80">QUESTION</span><button onclick="event.stopPropagation(); deleteCurrentFlashcard()" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-red-400 transition cursor-pointer"><i data-lucide="trash-2" class="size-4"></i></button></div>
+                                <div class="flex-1 flex items-center justify-center text-2xl md:text-3xl font-semibold text-center px-4" id="fc-display-q">Buat Flashcard!</div>
+                                <div class="text-center text-sm text-gray-500 pb-2"><i data-lucide="pointer" class="size-4 inline mr-1"></i> Flip</div>
+                            </div>
+                            <div id="card-back" class="absolute inset-0 bg-primary rounded-[2rem] border border-primary-hover p-8 flex flex-col backface-hidden rotate-y-180 shadow-2xl text-white">
+                                <div class="flex justify-between items-start w-full"><span class="px-4 py-1.5 rounded-full bg-black/20 text-xs font-bold tracking-wider">ANSWER</span></div>
+                                <div class="flex-1 flex items-center justify-center text-xl md:text-2xl font-medium text-center px-4 leading-relaxed" id="fc-display-a">Jawaban di sini.</div>
+                                <div class="text-center text-sm text-white/70 pb-2"><i data-lucide="pointer" class="size-4 inline mr-1"></i> Return</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="prevCard()" class="absolute left-4 top-1/2 -translate-y-1/2 size-12 rounded-full bg-[#2A2B36] hover:bg-gray-700 flex items-center justify-center text-white cursor-pointer z-10"><i data-lucide="chevron-left" class="size-6"></i></button>
+                    <button onclick="nextCard()" class="absolute right-4 top-1/2 -translate-y-1/2 size-12 rounded-full bg-[#2A2B36] hover:bg-gray-700 flex items-center justify-center text-white cursor-pointer z-10"><i data-lucide="chevron-right" class="size-6"></i></button>
+                    <p class="mt-8 text-gray-400 font-medium tracking-widest text-sm" id="fc-counter">0 / 0</p>
+                </div>
+            </div>
+            
+            <div id="tab-quiz" class="tab-content h-full hidden flex-col bg-muted overflow-y-auto">
+                <div class="max-w-3xl mx-auto w-full p-6 md:p-10">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-border">
+                        <div><h2 class="font-bold text-2xl mb-1">Tes Pemahaman AI</h2><p class="text-secondary text-sm">Minimal 5 soal diracik oleh AI.</p></div>
+                        <button onclick="generateQuiz()" class="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover cursor-pointer transition shadow-md w-full sm:w-auto" id="btn-generate-quiz">Mulai Kuis AI</button>
+                    </div>
+                    <div id="quiz-container" class="space-y-4"></div>
+                    <div id="quiz-result" class="mt-8 hidden"><div class="bg-success-light border border-success-dark/20 rounded-2xl p-8 text-center"><h4 class="font-bold text-lg text-success-dark mb-2">Selesai! Skor Kamu:</h4><p class="text-5xl font-black text-success-dark mb-4" id="quiz-score">0/0</p><p class="text-sm text-success-dark font-medium" id="quiz-feedback">Luar biasa!</p></div></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="section-prediction" class="content-section hidden flex-col h-[calc(100vh-140px)]">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-rose-500 rounded-xl flex items-center justify-center shrink-0"><i data-lucide="target" class="size-6 text-white"></i></div>
+                    <div><h1 data-i18n="pr_title" class="text-xl md:text-2xl font-bold mb-0.5">Prediksi Soal Ujian</h1><p data-i18n="pr_desc" class="text-secondary text-xs">Analisis pola soal lama dengan Machine Learning.</p></div>
+                </div>
+                <button class="nav-btn flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-white border border-border text-foreground rounded-xl font-medium hover:bg-gray-50 transition-all cursor-pointer text-sm shadow-sm" data-target="apps"><i data-lucide="arrow-left" class="size-4"></i> <span data-i18n="btn_back">Kembali</span></button>
+            </div>
+            <div class="flex-1 bg-white border border-border rounded-2xl shadow-sm p-6 overflow-y-auto relative">
+                <div id="prediction-list-view" class="block">
+                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <div><h2 data-i18n="pr_col_title" class="text-2xl font-bold text-foreground mb-1">Koleksi Prediksi</h2></div>
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <button onclick="openModal('modal-prediction')" class="whitespace-nowrap px-5 py-2.5 bg-[#F97316] text-white rounded-xl font-bold hover:bg-orange-600 transition cursor-pointer shadow-md flex items-center gap-2"><i data-lucide="plus" class="size-4"></i> <span data-i18n="pr_btn_new">Buat Prediksi</span></button>
+                        </div>
+                    </div>
+                    <div id="prediction-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div class="col-span-full text-center py-12">
+                            <div class="size-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-border"><i data-lucide="folder-search" class="size-8 text-gray-400"></i></div>
+                            <p data-i18n="pr_empty" class="text-secondary">Belum ada prediksi ujian.<br>Klik <b>"+ Buat Prediksi"</b> untuk mulai menganalisis.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<div id="section-thesis" class="content-section hidden flex-col h-[calc(100vh-140px)]">
+    
+    <div id="thesis-list-view" class="flex flex-col h-full">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 shrink-0">
+            <div>
+                <h1 data-i18n="th_title" class="text-2xl md:text-3xl font-bold mb-1 text-foreground">Proyek Anda</h1>
+                <p data-i18n="th_desc" class="text-secondary text-sm">Kelola dan atur struktur skripsi Anda</p>
+            </div>
+            <button onclick="openModal('modal-new-thesis')" class="bg-[#111827] text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-gray-800 transition cursor-pointer shadow-md">
+                <i data-lucide="plus" class="size-4"></i> <span data-i18n="th_btn_new">Proyek Baru</span>
+            </button>
+        </div>
+        <div class="flex-1 bg-white border border-border rounded-2xl shadow-sm p-6 md:p-10 overflow-y-auto" id="thesis-grid">
+        </div>
+    </div>
+
+    <div id="thesis-detail-view" class="hidden flex-col h-full">
+        <div class="flex items-center gap-4 mb-6 shrink-0">
+            <button onclick="closeThesisDetail()" class="p-2.5 bg-white border border-border hover:bg-gray-50 rounded-xl text-secondary transition shadow-sm">
+                <i data-lucide="arrow-left" class="size-5"></i>
+            </button>
+            <div class="flex-1 overflow-hidden">
+                <h2 id="detail-thesis-title" class="text-xl md:text-2xl font-bold text-foreground truncate">Judul Skripsi</h2>
+            </div>
+            <button onclick="deleteCurrentThesis()" class="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition shadow-sm" title="Hapus Proyek">
+                <i data-lucide="trash-2" class="size-5"></i>
+            </button>
+        </div>
+        
+        <div id="thesis-content-container" class="flex-1 bg-white border border-border rounded-2xl shadow-sm p-6 md:p-10 overflow-y-auto">
+            </div>
+    </div>
+
+</div>
+
+      </div>
+
+      <footer class="shrink-0 bg-white border-t border-border py-3 px-4 md:px-6 z-30 pb-safe md:pb-3 flex justify-between items-center text-[10px] md:text-xs text-secondary">
+         <p>&copy; 2026 StuProd. All rights reserved.</p>
+      </footer>
+
+    </main>
+  </div>
+
+  <div id="modal-new-thesis" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-[95%] max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-5 border-b border-border bg-gray-50 shrink-0">
+            <div>
+                <h3 data-i18n="m_th_title" class="font-bold text-lg text-foreground">Buat Proyek Skripsi Baru</h3>
+                <p data-i18n="m_th_sub" class="text-xs text-secondary">AI akan menyusun struktur penelitianmu.</p>
+            </div>
+            <button type="button" onclick="closeModal('modal-new-thesis')" class="p-1.5 hover:bg-gray-200 rounded-lg cursor-pointer"><i data-lucide="x" class="size-5"></i></button>
+        </div>
+        <form id="form-new-thesis" class="p-6 space-y-4 overflow-y-auto">
+            <div><label data-i18n="m_th_l1" class="block text-sm font-bold mb-1.5">Judul Penelitian</label><textarea id="th-title" data-i18n-placeholder="m_th_p1" rows="2" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition-colors" placeholder="Cth: Pengaruh AI terhadap..."></textarea></div>
+            <div><label data-i18n="m_th_l2" class="block text-sm font-bold mb-1.5">Rumusan Masalah Utama</label><textarea id="th-problem" data-i18n-placeholder="m_th_p2" rows="2" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition-colors" placeholder="Cth: Bagaimana tingkat akurasi..."></textarea></div>
+            <div><label data-i18n="m_th_l3" class="block text-sm font-bold mb-1.5">Tujuan Penelitian</label><textarea id="th-objective" data-i18n-placeholder="m_th_p3" rows="2" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition-colors" placeholder="Cth: Untuk mengetahui efektivitas..."></textarea></div>
+            <div><label data-i18n="m_th_l4" class="block text-sm font-bold mb-1.5">Metodologi (Singkat)</label><input type="text" id="th-methodology" data-i18n-placeholder="m_th_p4" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition-colors" placeholder="Cth: Kuantitatif Kuesioner / Kualitatif Wawancara"></div>
+            <div class="pt-4 flex justify-end">
+                <button type="submit" id="btn-submit-thesis" data-i18n="m_th_btn" class="px-8 py-3 bg-[#111827] text-white rounded-xl font-bold hover:bg-gray-800 transition cursor-pointer shadow-md w-full sm:w-auto">Buat Struktur (AI)</button>
+            </div>
+        </form>
+    </div>
+  </div>
+
+  <div id="modal-new-folder" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-[95%] max-w-sm overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between p-4 border-b border-border"><h3 data-i18n="m_fd_title" class="font-bold">Buat Folder Baru</h3><button type="button" onclick="closeModal('modal-new-folder')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div>
+          <form id="form-new-folder" class="p-4 space-y-3">
+              <div><input type="text" id="folder-name" data-i18n-placeholder="m_fd_ph" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none focus:border-blue-500 bg-muted focus:bg-white" placeholder="Nama Folder"></div>
+              <button type="submit" data-i18n="m_fd_btn" class="w-full py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 mt-2 cursor-pointer shadow-md">Buat Folder</button>
+          </form>
+      </div>
+  </div>
+
+  <div id="modal-upload-file" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between p-4 border-b border-border"><h3 data-i18n="m_up_title" class="font-bold">Upload File</h3><button type="button" onclick="closeModal('modal-upload-file')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div>
+          <form id="form-upload-file" class="p-4 space-y-4">
+              <div>
+                  <label data-i18n="m_up_l1" class="block text-xs font-bold mb-1">Pilih File dari Komputer</label>
+                  <input type="file" id="drive-file-input" required class="w-full text-sm text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 cursor-pointer border border-dashed border-gray-300 p-2 rounded-xl">
+              </div>
+              <div>
+                  <label data-i18n="m_up_l2" class="block text-xs font-bold mb-1">Simpan Sebagai (Nama File)</label>
+                  <input type="text" id="drive-file-name" data-i18n-placeholder="m_up_p2" required class="w-full px-4 py-2.5 text-sm rounded-xl border border-border outline-none focus:border-blue-500 bg-muted focus:bg-white transition-colors" placeholder="Contoh: Tugas_Akhir.pdf">
+              </div>
+              <button type="submit" data-i18n="m_up_btn" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 mt-2 cursor-pointer shadow-md">Upload ke Drive</button>
+          </form>
+      </div>
+  </div>
+
+  <div id="drive-upload-progress" class="fixed bottom-4 right-4 w-80 bg-white border border-border rounded-xl shadow-2xl z-[120] hidden flex-col overflow-hidden transform transition-all">
+      <div class="px-4 py-3 bg-gray-50 border-b border-border flex justify-between items-center">
+          <span data-i18n="m_prg_title" class="font-bold text-sm text-foreground" id="upload-progress-title">Mengunggah...</span>
+          <button onclick="document.getElementById('drive-upload-progress').classList.add('hidden')" class="p-1 text-secondary hover:text-foreground rounded"><i data-lucide="x" class="size-4"></i></button>
+      </div>
+      <div class="p-4">
+          <p data-i18n="m_prg_text" class="text-xs text-secondary mb-2 truncate" id="upload-progress-text">Menyiapkan file...</p>
+          <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden relative">
+              <div id="upload-progress-bar" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+      </div>
+  </div>
+
+  <div id="modal-gcal-event" class="fixed inset-0 bg-black/50 z-[150] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-[95%] max-w-lg overflow-hidden shadow-2xl flex flex-col">
+        <div class="bg-gray-100 flex items-center justify-between p-2 pl-4 border-b border-gray-200 drag-handle">
+            <i data-lucide="grip-horizontal" class="size-4 text-gray-400"></i>
+            <button type="button" onclick="closeModal('modal-gcal-event')" class="p-2 hover:bg-gray-200 rounded-full transition cursor-pointer"><i data-lucide="x" class="size-5 text-gray-600"></i></button>
+        </div>
+        
+        <form id="form-gcal-event" class="p-6 overflow-y-auto max-h-[85vh]">
+            <input type="hidden" id="ev-id">
+            
+            <div class="mb-4 pl-10 border-b-2 border-blue-600 focus-within:border-blue-700 transition-colors pb-1">
+                <input type="text" id="ev-title" data-i18n-placeholder="m_cal_pt" required class="w-full text-2xl text-foreground outline-none placeholder-gray-400 bg-transparent" placeholder="Add title">
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex gap-4 items-start">
+                    <i data-lucide="clock" class="size-5 text-gray-400 mt-2 shrink-0"></i>
+                    <div class="w-full">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <input type="date" id="ev-date" required class="bg-transparent hover:bg-gray-100 px-2 py-1 rounded text-sm outline-none cursor-pointer">
+                            <input type="time" id="ev-time-start" class="bg-transparent hover:bg-gray-100 px-2 py-1 rounded text-sm outline-none cursor-pointer" value="10:00">
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="ev-time-end" class="bg-transparent hover:bg-gray-100 px-2 py-1 rounded text-sm outline-none cursor-pointer" value="11:00">
+                        </div>
+                        <p data-i18n="m_cal_tz" class="text-xs text-gray-500 pl-2">Time zone • Does not repeat</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-center">
+                    <i data-lucide="map-pin" class="size-5 text-gray-400 shrink-0"></i>
+                    <input type="text" id="ev-location" data-i18n-placeholder="m_cal_pl" class="w-full bg-gray-50 border-none outline-none p-3 rounded-lg text-sm" placeholder="Add location">
+                </div>
+
+                <div class="flex gap-4 items-start pt-2">
+                    <i data-lucide="align-left" class="size-5 text-gray-400 mt-2 shrink-0"></i>
+                    <div class="w-full space-y-2">
+                        <textarea id="ev-desc" data-i18n-placeholder="m_cal_pd" rows="2" class="w-full bg-gray-50 border-none outline-none p-3 rounded-lg text-sm resize-none" placeholder="Add description"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-center pt-2">
+                    <i data-lucide="calendar" class="size-5 text-gray-400 shrink-0"></i>
+                    <div class="flex items-center gap-3 w-full">
+                        <span data-i18n="m_cal_col" class="text-sm font-medium text-foreground">Callendar event color</span>
+                        <select id="ev-color" class="bg-transparent hover:bg-gray-100 p-1.5 rounded text-sm cursor-pointer outline-none border border-gray-200">
+                            <option value="bg-blue-500">Blue</option><option value="bg-red-500">Red</option><option value="bg-green-500">Green</option><option value="bg-purple-500" selected>Purple</option><option value="bg-orange-500">Orange</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-4 items-center">
+                    <i data-lucide="bell" class="size-5 text-gray-400 shrink-0"></i>
+                    <select class="bg-gray-50 border-none outline-none p-2 rounded-lg text-sm"><option data-i18n="m_cal_b1">30 minutes before</option><option data-i18n="m_cal_b2">1 hour before</option></select>
+                </div>
+            </div>
+
+            <div class="flex justify-end items-center mt-8 gap-4 pt-4 border-t border-gray-100">
+                <button type="button" data-i18n="m_cal_opt" class="text-blue-600 font-medium text-sm hover:bg-blue-50 px-3 py-2 rounded">More options</button>
+                <button type="submit" data-i18n="m_cal_save" class="bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700 transition shadow-sm">Save</button>
+            </div>
+        </form>
+    </div>
+  </div>
+
+  <div id="modal-gcal-detail" class="fixed inset-0 bg-black/50 z-[150] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-[95%] max-w-sm overflow-hidden shadow-2xl">
+        <div class="flex justify-end p-2 border-b border-gray-100 gap-1 bg-gray-50">
+            <button onclick="calDeleteEvent()" class="p-2 hover:bg-gray-200 rounded-full transition text-gray-600 hover:text-red-500 tooltip" title="Delete event"><i data-lucide="trash-2" class="size-4.5"></i></button>
+            <button onclick="closeModal('modal-gcal-detail')" class="p-2 hover:bg-gray-200 rounded-full transition text-gray-600"><i data-lucide="x" class="size-4.5"></i></button>
+        </div>
+        <div class="p-5 flex gap-4 items-start">
+            <div id="detail-color-dot" class="size-4 rounded bg-blue-500 mt-1 shrink-0"></div>
+            <div>
+                <h2 id="detail-title" class="text-xl font-normal text-foreground mb-1">Title</h2>
+                <p id="detail-time" class="text-sm text-secondary mb-4">Time</p>
+                <div id="detail-desc-box" class="flex gap-3 text-sm text-foreground">
+                    <i data-lucide="align-left" class="size-4 text-gray-400 mt-0.5 shrink-0"></i>
+                    <p id="detail-desc" class="whitespace-pre-wrap">Desc...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <div id="modal-prediction" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-[95%] max-w-lg overflow-hidden shadow-xl flex flex-col">
+        <div class="flex items-center justify-between p-5 border-b border-border bg-white shrink-0"><h3 data-i18n="m_pr_title" class="font-bold text-lg">Buat Prediksi Soal Baru</h3><button type="button" onclick="closeModal('modal-prediction')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-5"></i></button></div>
+        <form id="form-prediction" class="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
+            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex gap-3 text-orange-900 shadow-sm"><i data-lucide="info" class="size-5 shrink-0 mt-0.5"></i><p data-i18n="m_pr_info" class="text-sm leading-relaxed">Upload soal-soal ujian sebelumnya dan AI akan menganalisis pola untuk membuat prediksi soal ujian berikutnya.</p></div>
+            <div><label data-i18n="m_pr_l1" class="block text-sm font-bold text-foreground mb-1.5">Judul Koleksi</label><input type="text" id="pred-title" data-i18n-placeholder="m_pr_p1" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-rose-500 bg-muted focus:bg-white transition-colors" placeholder="Cth: Prediksi Kalkulus 2026"></div>
+            <div><label data-i18n="m_pr_l2" class="block text-sm font-bold text-foreground mb-1.5">Mata Pelajaran/Kuliah</label><input type="text" id="pred-subject" data-i18n-placeholder="m_pr_p2" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-rose-500 bg-muted focus:bg-white transition-colors" placeholder="Cth: Matematika Lanjut"></div>
+            <div><label data-i18n="m_pr_l3" class="block text-sm font-bold text-foreground mb-1.5">Jenis Ujian (Tingkat Kesulitan AI)</label><select id="pred-type" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-rose-500 bg-muted focus:bg-white transition-colors cursor-pointer appearance-none"><option data-i18n="m_pr_o1" value="Latihan">Latihan</option><option data-i18n="m_pr_o2" value="Kuis">Kuis</option><option data-i18n="m_pr_o3" value="UTS">UTS</option><option data-i18n="m_pr_o4" value="UAS">UAS</option></select></div>
+            <div><label data-i18n="m_pr_l4" class="block text-sm font-bold text-foreground mb-1.5">Upload Soal Lama (Konteks AI)</label><input type="file" id="pred-file" accept=".pdf,.png,.jpg,.jpeg,.txt" required class="w-full text-sm text-secondary file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-rose-50 file:text-rose-600 hover:file:bg-rose-100 cursor-pointer border border-dashed border-gray-300 p-2 rounded-xl"><p data-i18n="m_pr_sup" class="text-[11px] text-secondary mt-1.5">*Mendukung Foto (JPG/PNG), PDF, atau TXT.</p></div>
+            <div class="flex justify-end gap-3 pt-2"><button type="button" data-i18n="btn_cancel" onclick="closeModal('modal-prediction')" class="px-6 py-3 border-2 border-border bg-white text-secondary rounded-xl font-bold hover:bg-gray-50 transition cursor-pointer">Batal</button><button type="submit" id="btn-submit-pred" data-i18n="m_pr_btn" class="px-8 py-3 bg-[#F97316] text-white rounded-xl font-bold hover:bg-orange-600 transition cursor-pointer shadow-md">Lanjut Analisis</button></div>
+        </form>
+    </div>
+  </div>
+
+  <div id="modal-group-task" class="fixed inset-0 bg-black/50 z-[150] hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between p-4 border-b border-border bg-gray-50 shrink-0">
+              <h3 data-i18n="m_gt_title" class="font-bold text-lg text-foreground">Buat Tugas Grup</h3>
+              <button type="button" onclick="closeModal('modal-group-task')" class="p-1.5 hover:bg-gray-200 rounded-lg cursor-pointer"><i data-lucide="x" class="size-5"></i></button>
+          </div>
+          <form id="form-group-task" class="p-5 space-y-4">
+              <div>
+                  <label data-i18n="m_gt_l1" class="block text-xs font-bold mb-1.5">Nama Tugas / Pekerjaan</label>
+                  <input type="text" id="gt-title" data-i18n-placeholder="m_gt_p1" required class="w-full px-4 py-2.5 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition" placeholder="Cth: Buat PPT Bab 1">
+              </div>
+              <div>
+                  <label data-i18n="m_gt_l2" class="block text-xs font-bold mb-1.5">Delegasikan Kepada (Member)</label>
+                  <select id="gt-assignee" class="w-full px-4 py-2.5 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition cursor-pointer">
+                      </select>
+              </div>
+              <button type="submit" data-i18n="m_gt_btn" class="w-full py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-black mt-2 cursor-pointer shadow-md">Tambahkan Tugas</button>
+          </form>
+      </div>
+  </div>
+
+  <div id="modal-invite-group" class="fixed inset-0 bg-black/50 z-[150] hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between p-4 border-b border-border bg-gray-50 shrink-0">
+              <h3 data-i18n="m_inv_title" class="font-bold text-lg text-indigo-700">Undang Teman</h3>
+              <button type="button" onclick="closeModal('modal-invite-group')" class="p-1.5 hover:bg-gray-200 rounded-lg cursor-pointer"><i data-lucide="x" class="size-5"></i></button>
+          </div>
+          <form id="form-invite-group" class="p-5 space-y-4">
+              <p data-i18n="m_inv_sub" class="text-xs text-secondary mb-2">Pilih teman untuk ditambahkan ke grup ini:</p>
+              <div id="invite-friends-list" class="max-h-48 overflow-y-auto border border-border rounded-lg p-2 space-y-1 bg-gray-50/50 custom-scrollbar">
+                  </div>
+              <button type="submit" data-i18n="m_inv_btn" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 mt-2 cursor-pointer shadow-md">Tambahkan ke Grup</button>
+          </form>
+      </div>
+  </div>
+
+  <div id="modal-rab" class="fixed inset-0 bg-black/50 z-[150] hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-[95%] max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+          <div class="flex items-center justify-between p-4 border-b border-border bg-gray-50 shrink-0">
+              <div>
+                  <h3 data-i18n="m_rab_title" class="font-bold text-lg text-emerald-700 flex items-center gap-2"><i data-lucide="sheet" class="size-5"></i> Tabel Rencana Anggaran (RAB)</h3>
+                  <p data-i18n="m_rab_sub" class="text-xs text-secondary mt-0.5">Prediksi pengeluaran bulananmu di sini.</p>
+              </div>
+              <button type="button" onclick="closeModal('modal-rab')" class="p-1.5 hover:bg-gray-200 rounded-lg cursor-pointer"><i data-lucide="x" class="size-5"></i></button>
+          </div>
+          
+          <div class="p-4 bg-white shrink-0 flex justify-between items-center border-b border-border">
+              <input type="month" id="rab-month-selector" onchange="changeRabMonth(this.value)" class="bg-gray-50 border border-border px-3 py-2 rounded-lg text-sm font-bold text-foreground outline-none cursor-pointer hover:border-emerald-400 transition">
+              <button onclick="addRABRow()" class="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition cursor-pointer flex items-center gap-1"><i data-lucide="plus" class="size-4"></i> <span data-i18n="m_rab_add">Tambah Baris</span></button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+              <div class="border border-border rounded-xl bg-white overflow-hidden shadow-sm">
+                  <table class="w-full text-sm text-left">
+                      <thead class="bg-gray-100 border-b border-border text-secondary font-bold uppercase text-[10px] tracking-wider">
+                          <tr>
+                              <th class="px-4 py-3 w-10 text-center">#</th>
+                              <th data-i18n="m_rab_th1" class="px-4 py-3 border-l border-border w-1/2">Nama Kebutuhan / Item</th>
+                              <th data-i18n="m_rab_th2" class="px-4 py-3 border-l border-border">Estimasi Biaya (Rp)</th>
+                              <th class="px-4 py-3 border-l border-border w-10 text-center"><i data-lucide="trash" class="size-4 mx-auto"></i></th>
+                          </tr>
+                      </thead>
+                      <tbody id="rab-table-body" class="divide-y divide-border">
+                          </tbody>
+                      <tfoot class="bg-emerald-50/50 border-t-2 border-emerald-200">
+                          <tr>
+                              <td data-i18n="m_rab_tot" colspan="2" class="px-4 py-3 text-right font-bold text-emerald-800">TOTAL ESTIMASI:</td>
+                              <td colspan="2" class="px-4 py-3 font-black text-emerald-700 text-base" id="rab-total-display">Rp 0</td>
+                          </tr>
+                      </tfoot>
+                  </table>
+              </div>
+          </div>
+          
+          <div class="p-4 border-t border-border bg-white shrink-0 flex justify-end">
+              <button onclick="saveRABData()" id="btn-save-rab" class="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition cursor-pointer shadow-md flex items-center gap-2"><i data-lucide="save" class="size-4"></i> <span data-i18n="m_rab_btn">Simpan RAB</span></button>
+          </div>
+      </div>
+  </div>
+
+  <div id="modal-user-preview" class="fixed inset-0 bg-black/50 z-[200] hidden items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-3xl w-[95%] max-w-sm overflow-hidden shadow-2xl relative text-center pb-6">
+          <button onclick="closeModal('modal-user-preview')" class="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition cursor-pointer z-10"><i data-lucide="x" class="size-4"></i></button>
+          <div class="h-28 bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 w-full relative"></div>
+          <img src="" id="preview-avatar" class="size-24 rounded-full object-cover ring-4 ring-white shadow-lg mx-auto -mt-12 bg-white relative z-10">
+          <h3 class="font-bold text-xl text-foreground mt-3" id="preview-name">Nama User</h3>
+          <p class="text-xs text-secondary mb-5 font-mono bg-gray-100 px-3 py-1 rounded-full inline-block mt-1" id="preview-uid">UID: ---</p>
+          
+          <div class="flex justify-center gap-6 mb-8 px-6">
+              <div class="text-center flex-1 bg-orange-50 rounded-xl p-3 border border-orange-100">
+                  <p class="text-2xl font-black text-orange-600" id="preview-xp">0</p>
+                  <p data-i18n="m_usr_xp" class="text-[10px] font-bold text-orange-800 uppercase mt-1">Total XP</p>
+              </div>
+              <div class="text-center flex-1 bg-blue-50 rounded-xl p-3 border border-blue-100">
+                  <p class="text-2xl font-black text-blue-600" id="preview-level">1</p>
+                  <p data-i18n="m_usr_lvl" class="text-[10px] font-bold text-blue-800 uppercase mt-1">Level</p>
+              </div>
+          </div>
+          
+          <div class="px-6">
+              <button id="btn-action-follow" class="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-600/30 cursor-pointer flex items-center justify-center gap-2"><i data-lucide="user-plus" class="size-5"></i> <span data-i18n="m_usr_add">Tambah Teman</span></button>
+          </div>
+      </div>
+  </div>
+
+  <div id="modal-create-group" class="fixed inset-0 bg-black/50 z-[150] hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between p-5 border-b border-border bg-gray-50 shrink-0">
+              <h3 data-i18n="m_cg_title" class="font-bold text-lg text-indigo-700 flex items-center gap-2"><i data-lucide="users" class="size-5"></i> Bentuk Grup</h3>
+              <button type="button" onclick="closeModal('modal-create-group')" class="p-1.5 hover:bg-gray-200 rounded-lg cursor-pointer"><i data-lucide="x" class="size-5"></i></button>
+          </div>
+          <form id="form-create-group" class="p-6 space-y-4">
+              <div>
+                  <label data-i18n="m_cg_l1" class="block text-xs font-bold mb-1.5">Nama Grup / Ruang Belajar</label>
+                  <input type="text" id="cg-name" data-i18n-placeholder="m_cg_p1" required class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition" placeholder="Cth: Pejuang Skripsi 2026">
+              </div>
+              <div>
+                  <label data-i18n="m_cg_l2" class="block text-xs font-bold mb-1.5">Deskripsi / Tujuan Grup</label>
+                  <input type="text" id="cg-desc" data-i18n-placeholder="m_cg_p2" class="w-full px-4 py-3 text-sm rounded-xl border border-border outline-none focus:border-indigo-500 bg-muted focus:bg-white transition" placeholder="Cth: Tempat mabar dan belajar coding">
+              </div>
+              
+              <div>
+                  <label data-i18n="m_cg_l3" class="block text-xs font-bold mb-2">Undang Teman ke Grup</label>
+                  <div id="cg-friends-list" class="max-h-40 overflow-y-auto border border-border rounded-lg p-2 space-y-1 bg-gray-50/50 custom-scrollbar">
+                      </div>
+              </div>
+
+              <button type="submit" data-i18n="m_cg_btn" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 mt-2 cursor-pointer shadow-md">Bentuk Sekarang</button>
+          </form>
+      </div>
+  </div>
+
+  <div id="modal-habit" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl w-[95%] max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      
+      <div class="flex items-center justify-between p-5 border-b border-border bg-gray-50">
+        <h3 data-i18n="m_hb_title" class="font-bold text-lg text-foreground">Create Habit</h3>
+        <button type="button" onclick="closeModal('modal-habit')" class="p-1.5 hover:bg-gray-200 rounded-xl transition cursor-pointer text-secondary hover:text-foreground"><i data-lucide="x" class="size-5"></i></button>
+      </div>
+      
+      <form id="form-habit" class="p-6 space-y-5 overflow-y-auto">
+        <div class="flex gap-4">
+           <div class="size-14 bg-yellow-100 rounded-full flex items-center justify-center text-3xl shrink-0 border border-yellow-300 shadow-sm relative cursor-pointer">
+               🙂
+               <div class="absolute bottom-0 right-0 bg-gray-700 text-white p-1 rounded-full"><i data-lucide="pen" class="size-2.5"></i></div>
+           </div>
+           <input type="text" id="hb-title" data-i18n-placeholder="m_hb_ph" required class="flex-1 px-4 py-3 text-base font-semibold rounded-2xl border border-border outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-muted focus:bg-white transition-all" placeholder="Daily Check-in">
+        </div>
+
+        <div class="space-y-1">
+            <div class="flex items-start justify-between border-b border-border py-3">
+               <label data-i18n="m_hb_fq" class="text-sm font-semibold text-secondary w-1/3 mt-1.5">Frequency</label>
+               <div class="w-2/3">
+                   <select id="hb-freq-type" onchange="toggleFreqDays(this.value)" class="w-full bg-transparent outline-none text-sm font-semibold cursor-pointer text-right text-foreground appearance-none hover:bg-gray-50 p-1.5 rounded-lg transition">
+                       <option data-i18n="m_hb_f1" value="daily">Daily</option>
+                       <option data-i18n="m_hb_f2" value="weekly">Weekly</option>
+                       <option data-i18n="m_hb_f3" value="specific">Pick Days (Custom)</option>
+                       <option data-i18n="m_hb_f4" value="interval">Interval</option>
+                   </select>
+                   <div id="hb-freq-specific" class="hidden justify-end gap-1.5 mt-3 flex-wrap">
+                       <label class="cursor-pointer"><input type="checkbox" value="Su" class="peer hidden"><span class="flex items-center justify-center size-8 rounded-full bg-gray-100 border border-transparent text-xs font-bold text-gray-400 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition">Su</span></label>
+                       <label class="cursor-pointer"><input type="checkbox" value="Mo" class="peer hidden" checked><span class="flex items-center justify-center size-8 rounded-full bg-gray-100 border border-transparent text-xs font-bold text-gray-400 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition">Mo</span></label>
+                       <label class="cursor-pointer"><input type="checkbox" value="Tu" class="peer hidden" checked><span class="flex items-center justify-center size-8 rounded-full bg-gray-100 border border-transparent text-xs font-bold text-gray-400 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition">Tu</span></label>
+                       <label class="cursor-pointer"><input type="checkbox" value="We" class="peer hidden" checked><span class="flex items-center justify-center size-8 rounded-full bg-gray-100 border border-transparent text-xs font-bold text-gray-400 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition">We</span></label>
+                       <label class="cursor-pointer"><input type="checkbox" value="Th" class="peer hidden" checked><span class="flex items-center justify-center size-8 rounded-full bg-gray-100 border border-transparent text-xs font-bold text-gray-400 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition">Th</span></label>
+                       <label class="cursor-pointer"><input type="checkbox" value="Fr" class="peer hidden" checked><span class="flex items-center justify-center size-8 rounded-full bg-gray-100 border border-transparent text-xs font-bold text-gray-400 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition">Fr</span></label>
+                       <label class="cursor-pointer"><input type="checkbox" value="Sa" class="peer hidden"><span class="flex items-center justify-center size-8 rounded-full bg-gray-100 border border-transparent text-xs font-bold text-gray-400 peer-checked:bg-primary peer-checked:text-white peer-checked:shadow-md transition">Sa</span></label>
+                   </div>
+               </div>
+            </div>
+
+            <div class="flex items-center justify-between border-b border-border py-3">
+               <label data-i18n="m_hb_gl" class="text-sm font-semibold text-secondary w-1/3">Goal</label>
+               <div class="w-2/3 flex justify-end items-center gap-2">
+                   <select id="hb-goal-type" onchange="toggleGoalCount(this.value)" class="bg-transparent outline-none text-sm font-semibold cursor-pointer text-right text-foreground appearance-none hover:bg-gray-50 p-1.5 rounded-lg transition">
+                        <option data-i18n="m_hb_g1" value="all">Achieve it all</option>
+                        <option data-i18n="m_hb_g2" value="times">Times per day</option>
+                   </select>
+                   <div id="hb-goal-wrapper" class="hidden items-center gap-1.5 bg-gray-50 p-1 rounded-lg border border-border focus-within:border-primary transition">
+                       <input type="number" id="hb-goal-count" value="1" min="1" class="w-10 bg-transparent text-sm font-bold text-center outline-none">
+                       <span data-i18n="m_hb_g3" class="text-[10px] font-bold text-secondary uppercase pr-1">Times</span>
+                   </div>
+               </div>
+            </div>
+
+            <div class="flex items-center justify-between border-b border-border py-3">
+               <label data-i18n="m_hb_sd" class="text-sm font-semibold text-secondary w-1/3">Start Date</label>
+               <input type="date" id="hb-start-date" required class="w-2/3 bg-transparent hover:bg-gray-50 p-1.5 rounded-lg outline-none text-sm font-semibold cursor-pointer text-right transition">
+            </div>
+
+            <div class="flex flex-col border-b border-border py-3">
+               <div class="flex items-center justify-between w-full">
+                   <label class="text-sm font-semibold text-secondary flex items-center gap-1"><span data-i18n="m_hb_gd">Goal Days</span> <i data-lucide="help-circle" class="size-3 text-gray-400"></i></label>
+                   <select id="hb-goal-days" onchange="toggleCustomDays(this.value)" class="w-1/2 bg-transparent outline-none text-sm font-semibold cursor-pointer text-right appearance-none hover:bg-gray-50 p-1.5 rounded-lg transition text-primary">
+                       <option data-i18n="m_hb_gd1" value="forever">Forever</option>
+                       <option data-i18n="m_hb_gd2" value="7">7 days</option>
+                       <option data-i18n="m_hb_gd3" value="21">21 days</option>
+                       <option data-i18n="m_hb_gd4" value="30">30 days</option>
+                       <option data-i18n="m_hb_gd5" value="100">100 days</option>
+                       <option data-i18n="m_hb_gd6" value="custom">Custom</option>
+                   </select>
+               </div>
+               <input type="number" id="hb-custom-days" min="1" data-i18n-placeholder="m_hb_gdp" placeholder="Enter days (e.g. 14)" class="hidden w-full mt-2 bg-gray-50 border border-border rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-primary transition">
+            </div>
+
+            <div class="flex items-center justify-between border-b border-border py-3">
+               <label data-i18n="m_hb_sec" class="text-sm font-semibold text-secondary w-1/3">Section</label>
+               <select id="hb-area" class="w-2/3 bg-transparent outline-none text-sm font-semibold cursor-pointer text-right appearance-none hover:bg-gray-50 p-1.5 rounded-lg transition">
+                   <option data-i18n="m_hb_s1" value="study">Study</option>
+                   <option data-i18n="m_hb_s2" value="health">Health</option>
+                   <option data-i18n="m_hb_s3" value="general">Others</option>
+               </select>
+            </div>
+            
+            <div class="flex items-center justify-between border-b border-border py-3">
+               <label data-i18n="m_hb_tm" class="text-sm font-semibold text-secondary w-1/3">Time</label>
+               <select id="hb-time" class="w-2/3 bg-transparent outline-none text-sm font-semibold cursor-pointer text-right appearance-none hover:bg-gray-50 p-1.5 rounded-lg transition">
+                   <option data-i18n="m_hb_t1" value="anytime">Anytime</option>
+                   <option data-i18n="m_hb_t2" value="morning">Morning</option>
+                   <option data-i18n="m_hb_t3" value="afternoon">Afternoon</option>
+                   <option data-i18n="m_hb_t4" value="evening">Evening</option>
+               </select>
+            </div>
+
+            <div class="flex items-start justify-between py-3">
+               <label data-i18n="m_hb_rem" class="text-sm font-semibold text-secondary w-1/3 mt-2.5">Reminder</label>
+               <div class="w-2/3 flex flex-col items-end gap-2" id="hb-reminder-container">
+                   <div class="flex items-center gap-2 reminder-item">
+                       <input type="time" value="15:00" class="hb-reminder-input bg-gray-50 border border-border rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-primary hover:bg-gray-100 transition">
+                       <button type="button" onclick="addReminderField()" class="flex items-center justify-center size-9 bg-gray-50 border border-border hover:bg-gray-100 rounded-xl text-secondary transition tooltip" title="Add reminder"><i data-lucide="plus" class="size-4"></i></button>
+                   </div>
+               </div>
+            </div>
+            
+            <div class="pt-2">
+                <label class="flex items-center gap-3 cursor-pointer group w-max">
+                    <input type="checkbox" class="size-4 rounded accent-primary border-gray-300">
+                    <span data-i18n="m_hb_chk" class="text-sm text-secondary font-medium group-hover:text-foreground transition">Auto pop-up of habit log</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-6 border-t border-border mt-4">
+            <button type="button" data-i18n="btn_cancel" onclick="closeModal('modal-habit')" class="px-6 py-3 rounded-2xl font-bold text-secondary hover:bg-gray-100 transition cursor-pointer">Cancel</button>
+            <button type="submit" data-i18n="btn_save" class="px-8 py-3 bg-[#3C64F4] text-white rounded-2xl font-bold hover:bg-[#2A4BCC] transition shadow-lg shadow-blue-500/30 cursor-pointer">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-legal" class="fixed inset-0 z-[100] hidden bg-black/50 backdrop-blur-sm items-center justify-center p-4">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-fade-in-up">
+        
+        <div class="flex items-center justify-between p-5 border-b border-gray-100">
+            <h3 id="legal-title" class="font-bold text-lg text-gray-800 flex items-center gap-2">
+                <i data-lucide="file-text" class="size-5 text-indigo-500"></i> Judul Dokumen
+            </h3>
+            <button onclick="closeModal('modal-legal')" class="text-gray-400 hover:text-red-500 transition-colors cursor-pointer">
+                <i data-lucide="x" class="size-5"></i>
+            </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto custom-scrollbar bg-gray-50">
+            <div id="legal-content" class="text-sm text-gray-600 leading-relaxed space-y-4">
+                </div>
+        </div>
+
+        <div class="p-4 border-t border-gray-100 flex justify-end">
+            <button onclick="closeModal('modal-legal')" data-i18n="btn_understand" class="px-5 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-bold rounded-xl transition cursor-pointer">Saya Mengerti</button>
+        </div>
+    </div>
+</div>
+
+  <div id="modal-onboarding" class="fixed inset-0 z-[200] hidden bg-gray-900/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up">
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-8 text-center relative overflow-hidden">
+            <i data-lucide="rocket" class="absolute -top-6 -left-6 size-40 text-white opacity-10 rotate-12"></i>
+            <h2 data-i18n="m_ob_t1" class="text-3xl font-black text-white tracking-tight relative z-10">Selamat Datang! 👋</h2>
+            <p data-i18n="m_ob_s1" class="text-emerald-50 mt-2 text-sm relative z-10">Mari siapkan ruang kerjamu sebelum memulai perjalanan akademik yang luar biasa.</p>
+        </div>
+
+        <div class="p-8">
+            <form id="form-onboarding" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <h4 data-i18n="m_ob_h1" class="text-xs font-bold text-emerald-600 uppercase tracking-wider border-b border-gray-100 pb-2">Siapa Kamu?</h4>
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1"><span data-i18n="m_ob_l1">Nama Lengkap</span> <span class="text-red-500">*</span></label>
+                            <input type="text" id="ob-name" data-i18n-placeholder="m_ob_p1" class="w-full text-sm p-2.5 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-gray-50 focus:bg-white" placeholder="Cth: Nouval" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1"><span data-i18n="m_ob_l2">Spesialisasi</span> <span class="text-red-500">*</span></label>
+                            <input type="text" id="ob-role" data-i18n-placeholder="m_ob_p2" class="w-full text-sm p-2.5 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-gray-50 focus:bg-white" placeholder="Cth: Full-stack Developer" required>
+                        </div>
+                        <div>
+                            <label data-i18n="m_ob_l3" class="block text-xs text-gray-500 font-semibold mb-1">Domisili (Kota)</label>
+                            <input type="text" id="ob-location" data-i18n-placeholder="m_ob_p3" class="w-full text-sm p-2.5 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-gray-50 focus:bg-white" placeholder="Cth: Semarang">
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h4 data-i18n="m_ob_h2" class="text-xs font-bold text-emerald-600 uppercase tracking-wider border-b border-gray-100 pb-2">Kampus & Visi</h4>
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1"><span data-i18n="m_ob_l4">Nama Universitas</span> <span class="text-red-500">*</span></label>
+                            <input type="text" id="ob-univ" data-i18n-placeholder="m_ob_p4" class="w-full text-sm p-2.5 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-gray-50 focus:bg-white" placeholder="Cth: Universitas Negeri Semarang" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1"><span data-i18n="m_ob_l5">Program Studi</span> <span class="text-red-500">*</span></label>
+                            <input type="text" id="ob-major" data-i18n-placeholder="m_ob_p5" class="w-full text-sm p-2.5 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-gray-50 focus:bg-white" placeholder="Cth: Teknik Informatika" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 font-semibold mb-1"><span data-i18n="m_ob_l6">Target IPK</span> <span class="text-red-500">*</span></label>
+                                <input type="number" id="ob-ipk" step="0.01" min="1" max="4" class="w-full text-sm p-2.5 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-gray-50 focus:bg-white text-center" value="3.80" required>
+                            </div>
+                            <div>
+                                <label data-i18n="m_ob_l7" class="block text-xs text-gray-500 font-semibold mb-1">Tahun Lulus</label>
+                                <input type="text" id="ob-grad" class="w-full text-sm p-2.5 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-gray-50 focus:bg-white text-center" placeholder="2026">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6 mt-6 border-t border-gray-100">
+                    <button type="submit" class="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer">
+                        <span data-i18n="m_ob_btn">Mulai Petualangan</span> <i data-lucide="arrow-right" class="size-4"></i>
+                    </button>
+                    <p data-i18n="m_ob_nt" class="text-center text-[10px] text-gray-400 mt-3">* Data ini bisa kamu ubah kapan saja nanti di menu Pengaturan Profil.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+  <div id="modal-edit-profile" class="fixed inset-0 z-[100] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeEditProfileModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-5 border-b border-gray-100">
+            <h3 data-i18n="m_ep_t1" class="font-bold text-lg text-gray-800 flex items-center gap-2">
+                <i data-lucide="user-cog" class="size-5 text-emerald-500"></i> Edit Informasi Profil
+            </h3>
+            <button onclick="closeEditProfileModal()" class="text-gray-400 hover:text-red-500 transition-colors cursor-pointer"><i data-lucide="x" class="size-5"></i></button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto">
+            <form id="form-edit-profile" class="space-y-5">
+                <div>
+                    <h4 data-i18n="m_ep_h1" class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3">Identitas Diri</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center gap-4 pb-4 border-b border-gray-100 md:col-span-2">
+                            <div class="relative shrink-0">
+                                <img id="edit-avatar-preview" src="https://ui-avatars.com/api/?name=User" alt="Preview" class="size-16 sm:size-20 rounded-full object-cover border-4 border-emerald-50 shadow-sm">
+                                <label for="edit-avatar" class="absolute -bottom-1 -right-1 bg-white text-emerald-600 p-1.5 rounded-full shadow border border-gray-200 cursor-pointer hover:bg-emerald-50 transition"><i data-lucide="camera" class="size-3.5"></i></label>
+                                <input type="file" id="edit-avatar" accept="image/*" class="hidden" onchange="previewEditAvatar(event)">
+                            </div>
+                            <div>
+                                <h4 data-i18n="m_ep_pic" class="text-xs font-bold text-gray-800">Foto Profil</h4>
+                                <p data-i18n="m_ep_pic_n" class="text-[10px] text-gray-500 mt-0.5">Format JPG/PNG maks 2MB.<br>Rasio 1:1 direkomendasikan.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1">Nama Lengkap</label>
+                            <input type="text" id="edit-full-name" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" required>
+                        </div>
+                        <div>
+                            <label data-i18n="m_ep_l1" class="block text-xs text-gray-500 font-semibold mb-1">Username (Tanpa @)</label>
+                            <input type="text" id="edit-username" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" required>
+                        </div>
+                        <div>
+                            <label data-i18n="m_ep_l2" class="block text-xs text-gray-500 font-semibold mb-1">Role / Spesialisasi</label>
+                            <input type="text" id="edit-role" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" placeholder="Cth: Full-stack Developer">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1">Lokasi</label>
+                            <input type="text" id="edit-location" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" placeholder="Cth: Semarang, Indonesia">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-100">
+                    <h4 data-i18n="m_ep_h2" class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3">Informasi Akademik</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1">Universitas</label>
+                            <input type="text" id="edit-university" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1">Program Studi</label>
+                            <input type="text" id="edit-major" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label data-i18n="m_ep_l3" class="block text-xs text-gray-500 font-semibold mb-1">Tag Organisasi (Pisahkan dengan koma)</label>
+                            <input type="text" id="edit-orgs" data-i18n-placeholder="m_ep_p3" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" placeholder="Cth: HIMA Sinergi, OSIS">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-100">
+                    <h4 data-i18n="m_ep_h3" class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3">Target & Jejak Digital</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 font-semibold mb-1">Target IPK (Maks 4.00)</label>
+                            <input type="number" id="edit-target-ipk" step="0.01" min="0" max="4" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white">
+                        </div>
+                        <div>
+                            <label data-i18n="m_ep_l4" class="block text-xs text-gray-500 font-semibold mb-1">Bulan/Tahun Lulus</label>
+                            <input type="text" id="edit-target-grad" data-i18n-placeholder="m_ep_p4" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" placeholder="Cth: Agustus 2026">
+                        </div>
+                        <div>
+                            <label data-i18n="m_ep_l5" class="block text-xs text-gray-500 font-semibold mb-1">Target Jam/Minggu</label>
+                            <input type="number" id="edit-target-study" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label data-i18n="m_ep_l6" class="block text-xs text-gray-500 font-semibold mb-1">URL GitHub</label>
+                            <input type="url" id="edit-github" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" placeholder="https://github.com/...">
+                        </div>
+                        <div>
+                            <label data-i18n="m_ep_l7" class="block text-xs text-gray-500 font-semibold mb-1">URL Portfolio</label>
+                            <input type="url" id="edit-portfolio" class="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-emerald-500 bg-gray-50 focus:bg-white" placeholder="https://...">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-gray-100 flex justify-end gap-3">
+                    <button type="button" data-i18n="btn_cancel" onclick="closeEditProfileModal()" class="px-5 py-2 text-sm font-semibold text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                        <i data-lucide="save" class="size-4"></i> <span data-i18n="m_ep_sv">Simpan Perubahan</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="modal-delete-thesis" class="fixed inset-0 z-[100] hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('modal-delete-thesis')"></div>
+    
+    <div class="bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl z-10 p-6 transform transition-all">
+        <div class="flex flex-col items-center text-center">
+            <div class="size-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-4 border-4 border-red-100">
+                <i data-lucide="alert-triangle" class="size-8"></i>
+            </div>
+            
+            <h3 class="text-xl font-bold text-foreground mb-2">Hapus Proyek Skripsi?</h3>
+            <p class="text-sm text-secondary mb-6 leading-relaxed">
+                Apakah Anda yakin ingin menghapus proyek ini secara permanen? Semua data struktur bab dan analisis AI akan hilang dan <b>tidak dapat dikembalikan</b>.
+            </p>
+            
+            <div class="flex gap-3 w-full">
+                <button onclick="closeModal('modal-delete-thesis')" class="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">
+                    Batal
+                </button>
+                <button id="btn-confirm-delete-thesis" onclick="executeDeleteThesis()" class="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md shadow-red-500/30 transition flex items-center justify-center gap-2">
+                    <i data-lucide="trash-2" class="size-4"></i> Hapus Permanen
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-about" class="fixed inset-0 z-[100] hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('modal-about')"></div>
+    <div class="bg-white w-full max-w-2xl mx-4 rounded-2xl shadow-2xl z-10 flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-5 border-b border-border shrink-0">
+            <h3 class="text-xl font-bold text-foreground flex items-center gap-2">
+                <i data-lucide="info" class="size-5 text-indigo-600"></i> <span data-i18n="set_about">Tentang Aplikasi</span>
+            </h3>
+            <button onclick="closeModal('modal-about')" class="text-gray-400 hover:text-red-500 transition"><i data-lucide="x" class="size-5"></i></button>
+        </div>
+        <div class="p-6 overflow-y-auto text-sm text-secondary leading-relaxed space-y-4">
+            <p data-i18n="about_p1"><b>Student Workspace v2.1.0</b> adalah sebuah platform produktivitas all-in-one yang dirancang secara spesifik untuk membantu mahasiswa mengelola kehidupan akademik mereka.</p>
+            <p data-i18n="about_p2">Dibangun dengan arsitektur modern (JavaScript & Supabase), aplikasi ini mengintegrasikan pelacakan nilai (IPK Tracker), manajemen keuangan, manajemen waktu (Pomodoro), serta fitur sosial kolaboratif (Study Room).</p>
+            <p data-i18n="about_p3">Misi kami adalah mendigitalkan dan menyederhanakan kehidupan kampus agar kamu bisa lebih fokus meraih mimpimu.</p>
+        </div>
+        <div class="p-5 border-t border-border flex justify-end shrink-0 bg-gray-50 rounded-b-2xl">
+            <button onclick="closeModal('modal-about')" class="px-5 py-2.5 bg-[#111827] text-white font-bold rounded-xl hover:bg-gray-800 transition" data-i18n="btn_understand">Saya Mengerti</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-privacy" class="fixed inset-0 z-[100] hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('modal-privacy')"></div>
+    <div class="bg-white w-full max-w-2xl mx-4 rounded-2xl shadow-2xl z-10 flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-5 border-b border-border shrink-0">
+            <h3 class="text-xl font-bold text-foreground flex items-center gap-2">
+                <i data-lucide="shield-check" class="size-5 text-indigo-600"></i> <span data-i18n="set_privacy">Kebijakan Privasi</span>
+            </h3>
+            <button onclick="closeModal('modal-privacy')" class="text-gray-400 hover:text-red-500 transition"><i data-lucide="x" class="size-5"></i></button>
+        </div>
+        <div class="p-6 overflow-y-auto text-sm text-secondary leading-relaxed space-y-6">
+            <div>
+                <h4 class="font-bold text-foreground text-base mb-1" data-i18n="priv_t1">1. Pengumpulan Data</h4>
+                <p data-i18n="priv_d1">Kami hanya mengumpulkan data yang relevan dengan akunmu (Nama, Universitas, Jurusan, Nilai Akademik) yang diinputkan secara sukarela melalui formulir di dalam aplikasi.</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-foreground text-base mb-1" data-i18n="priv_t2">2. Keamanan Data</h4>
+                <p data-i18n="priv_d2">Seluruh data diamankan menggunakan Row Level Security (RLS) dari Supabase PostgreSQL, yang artinya data milikmu tidak dapat diakses atau dibaca oleh pengguna lain di dalam sistem ini.</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-foreground text-base mb-1" data-i18n="priv_t3">3. Penggunaan Pihak Ketiga</h4>
+                <p data-i18n="priv_d3">Kami tidak akan pernah menjual, menyewakan, atau mendistribusikan data akademik pribadimu kepada pihak ketiga manapun tanpa persetujuan eksplisit darimu.</p>
+            </div>
+        </div>
+        <div class="p-5 border-t border-border flex justify-end shrink-0 bg-gray-50 rounded-b-2xl">
+            <button onclick="closeModal('modal-privacy')" class="px-5 py-2.5 bg-[#111827] text-white font-bold rounded-xl hover:bg-gray-800 transition" data-i18n="btn_understand">Saya Mengerti</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-terms" class="fixed inset-0 z-[100] hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('modal-terms')"></div>
+    <div class="bg-white w-full max-w-2xl mx-4 rounded-2xl shadow-2xl z-10 flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-5 border-b border-border shrink-0">
+            <h3 class="text-xl font-bold text-foreground flex items-center gap-2">
+                <i data-lucide="file-signature" class="size-5 text-indigo-600"></i> <span data-i18n="set_terms">Syarat & Ketentuan</span>
+            </h3>
+            <button onclick="closeModal('modal-terms')" class="text-gray-400 hover:text-red-500 transition"><i data-lucide="x" class="size-5"></i></button>
+        </div>
+        <div class="p-6 overflow-y-auto text-sm text-secondary leading-relaxed space-y-6">
+            <div>
+                <h4 class="font-bold text-foreground text-base mb-1" data-i18n="term_t1">1. Penggunaan Layanan</h4>
+                <p data-i18n="term_d1">Dengan menggunakan layanan ini, Anda setuju untuk menggunakan aplikasi ini untuk tujuan produktivitas akademik yang sah dan tidak menyalahgunakan celah keamanan apapun.</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-foreground text-base mb-1" data-i18n="term_t2">2. Kepemilikan Akun</h4>
+                <p data-i18n="term_d2">Anda bertanggung jawab penuh atas keamanan kata sandi Anda. Tim Developer tidak bertanggung jawab atas kerugian data akibat kelalaian pembagian kredensial masuk.</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-foreground text-base mb-1" data-i18n="term_t3">3. Ketersediaan Layanan</h4>
+                <p data-i18n="term_d3">Mengingat aplikasi ini masih berada di fase Beta, kami berhak melakukan pemeliharaan server secara berkala yang mungkin menyebabkan aplikasi tidak dapat diakses untuk sementara waktu.</p>
+            </div>
+        </div>
+        <div class="p-5 border-t border-border flex justify-end shrink-0 bg-gray-50 rounded-b-2xl">
+            <button onclick="closeModal('modal-terms')" class="px-5 py-2.5 bg-[#111827] text-white font-bold rounded-xl hover:bg-gray-800 transition" data-i18n="btn_understand">Saya Mengerti</button>
+        </div>
+    </div>
+</div>
+
+  <div id="modal-task" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 data-i18n="m_tk_t1" class="font-bold">Tambah Tugas</h3><button type="button" onclick="closeModal('modal-task')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-task" class="p-4 space-y-3"><div><label data-i18n="m_tk_l1" class="block text-xs font-semibold text-secondary mb-1">Nama Tugas</label><input type="text" id="task-title" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label data-i18n="m_tk_l2" class="block text-xs font-semibold text-secondary mb-1">Deadline</label><input type="datetime-local" id="task-deadline" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><button type="submit" data-i18n="m_tk_btn" class="w-full py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover mt-2 cursor-pointer">Simpan Tugas</button></form></div></div>
+  <div id="modal-finance" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 data-i18n="m_fn_t1" class="font-bold">Tambah Transaksi</h3><button type="button" onclick="closeModal('modal-finance')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-finance" class="p-4 space-y-3"><div><label data-i18n="m_fn_l1" class="block text-xs font-semibold text-secondary mb-1">Tipe</label><select id="finance-type" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"><option data-i18n="m_fn_o1" value="income">Pemasukan</option><option data-i18n="m_fn_o2" value="expense">Pengeluaran</option></select></div><div><label data-i18n="m_fn_l2" class="block text-xs font-semibold text-secondary mb-1">Jumlah</label><input type="number" id="finance-amount" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label data-i18n="m_fn_l3" class="block text-xs font-semibold text-secondary mb-1">Keterangan</label><input type="text" id="finance-note" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><button type="submit" data-i18n="m_fn_btn" class="w-full py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover mt-2 cursor-pointer">Simpan Transaksi</button></form></div></div>
+  <div id="modal-roadmap" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 data-i18n="m_rm_t1" class="font-bold">Tambah Target Roadmap</h3><button type="button" onclick="closeModal('modal-roadmap')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-roadmap" class="p-4 space-y-3"><div class="grid grid-cols-2 gap-3"><div><label data-i18n="m_rm_l1" class="block text-xs font-semibold text-secondary mb-1">Semester</label><input type="number" id="rm-semester" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label data-i18n="m_rm_l2" class="block text-xs font-semibold text-secondary mb-1">Target SKS</label><input type="number" id="rm-sks" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div></div><div><label data-i18n="m_rm_l3" class="block text-xs font-semibold text-secondary mb-1">Pencapaian</label><input type="text" id="rm-target" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label data-i18n="m_rm_l4" class="block text-xs font-semibold text-secondary mb-1">Status</label><select id="rm-status" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"><option data-i18n="m_rm_o1" value="rencana">Rencana</option><option data-i18n="m_rm_o2" value="berjalan">Berjalan</option><option data-i18n="m_rm_o3" value="selesai">Selesai</option></select></div><button type="submit" data-i18n="m_rm_btn" class="w-full py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover mt-2 cursor-pointer">Simpan</button></form></div></div>
+  <div id="modal-iptracker" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-md overflow-hidden shadow-xl max-h-[95vh] flex flex-col"><div class="flex items-center justify-between p-4 border-b border-border shrink-0"><h3 data-i18n="m_ip_t1" class="font-bold">Kalkulasi Mata Kuliah</h3><button type="button" onclick="closeModal('modal-iptracker')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-iptracker" class="p-4 space-y-3 overflow-y-auto"><div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-secondary mb-1">Semester</label><input type="number" id="ip-semester" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label data-i18n="m_ip_l1" class="block text-xs font-semibold text-secondary mb-1">SKS Matkul</label><input type="number" id="ip-sks" required min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div></div><div><label data-i18n="m_ip_l2" class="block text-xs font-semibold text-secondary mb-1">Nama Mata Kuliah</label><input type="text" id="ip-course" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div class="mt-4 pt-3 border-t border-border"><div class="flex items-center justify-between mb-2"><label data-i18n="m_ip_l3" class="block text-xs font-semibold text-foreground">Aspek Penilaian (Total Wajib 100%)</label><button type="button" id="btn-add-aspect" data-i18n="m_ip_add" class="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-md hover:bg-primary/20 cursor-pointer">+ Tambah Aspek</button></div><div id="aspects-container" class="space-y-2"></div><div class="mt-2 text-xs font-bold text-right" id="total-weight-display"><span data-i18n="m_ip_tot">Total Bobot:</span> 0%</div></div><button type="submit" data-i18n="m_ip_btn" class="w-full py-2 bg-primary text-white rounded-lg font-medium mt-4 cursor-pointer">Simpan & Hitung</button></form></div></div>
+  <div id="modal-change-password" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4"><div class="bg-white rounded-2xl w-[95%] max-w-sm overflow-hidden shadow-xl"><div class="flex items-center justify-between p-4 border-b border-border"><h3 data-i18n="m_pw_t1" class="font-bold">Ganti Kata Sandi</h3><button type="button" onclick="closeModal('modal-change-password')" class="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><i data-lucide="x" class="size-4"></i></button></div><form id="form-change-password" class="p-4 space-y-3"><div><label data-i18n="m_pw_l1" class="block text-xs font-semibold text-secondary mb-1">Password Baru (Min. 6 Karakter)</label><input type="password" id="pw-new" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><div><label data-i18n="m_pw_l2" class="block text-xs font-semibold text-secondary mb-1">Konfirmasi Password Baru</label><input type="password" id="pw-confirm" required class="w-full px-3 py-2 text-sm rounded-lg border border-border outline-none"></div><button type="submit" id="btn-submit-password" data-i18n="m_pw_btn" class="w-full py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 mt-2 cursor-pointer">Ubah Password</button></form></div></div>
+  <div id="toast" class="fixed top-4 right-4 z-[110] transform translate-x-full transition-transform duration-300 w-[90%] md:w-auto mx-auto left-0 md:left-auto right-0 md:right-4"><div class="bg-white border border-border rounded-xl p-3 shadow-lg flex items-center gap-3"><div id="toast-icon" class="size-8 rounded-lg flex items-center justify-center shrink-0"></div><p id="toast-message" class="font-medium text-sm pr-2">Berhasil!</p></div></div>
+
+  <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          if (typeof lucide !== 'undefined') {
+              lucide.createIcons();
+          } else {
+              setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 1000);
+          }
+      });
+  </script>
+
+  <script>
+    // Set default tanggal hari ini
+    document.addEventListener('DOMContentLoaded', () => {
+        const dateInput = document.getElementById('hb-start-date');
+        if (dateInput) {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+            dateInput.value = localISOTime;
+        }
+    });
+
+    // Menampilkan Gelembung Hari
+    function toggleFreqDays(val) {
+        const specificDiv = document.getElementById('hb-freq-specific');
+        if(val === 'specific') {
+            specificDiv.classList.remove('hidden');
+            specificDiv.classList.add('flex');
+        } else {
+            specificDiv.classList.add('hidden');
+            specificDiv.classList.remove('flex');
+        }
+    }
+
+    // Menampilkan Input Target Kali/Hari
+    function toggleGoalCount(val) {
+        const wrap = document.getElementById('hb-goal-wrapper');
+        if(val === 'times') {
+            wrap.classList.remove('hidden');
+            wrap.classList.add('flex');
+            document.getElementById('hb-goal-count').focus();
+        } else {
+            wrap.classList.add('hidden');
+            wrap.classList.remove('flex');
+        }
+    }
+
+    // Menampilkan Input Hari Custom
+    function toggleCustomDays(val) {
+        const customInput = document.getElementById('hb-custom-days');
+        if(val === 'custom') {
+            customInput.classList.remove('hidden');
+            customInput.focus();
+        } else {
+            customInput.classList.add('hidden');
+        }
+    }
+
+    // Menambah Waktu Reminder
+    function addReminderField() {
+        const container = document.getElementById('hb-reminder-container');
+        const newDiv = document.createElement('div');
+        newDiv.className = 'flex items-center gap-2 reminder-item mt-1 animate-pulse';
+        newDiv.innerHTML = `
+            <input type="time" value="09:00" class="hb-reminder-input bg-gray-50 border border-border rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-primary hover:bg-gray-100 transition">
+            <button type="button" onclick="this.parentElement.remove()" class="flex items-center justify-center size-9 bg-red-50 border border-red-100 hover:bg-red-100 rounded-xl text-red-500 transition cursor-pointer"><i data-lucide="minus" class="size-4"></i></button>
+        `;
+        container.appendChild(newDiv);
+        setTimeout(() => newDiv.classList.remove('animate-pulse'), 300);
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  </script>
+  
+  <script src="js/career.js"></script>
+  <script src="js/prediction.js"></script>
+  <script src="js/studywithopang.js"></script>
+  <script src="js/suite.js"></script> 
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

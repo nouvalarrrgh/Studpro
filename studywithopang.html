@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyWithOpang - AI Study Suite</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.438.0/umd/lucide.min.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Lexend Deca', 'sans-serif'] },
+          colors: {
+            primary: '#165DFF', 'primary-hover': '#0E4BD9',
+            foreground: '#080C1A', secondary: '#6A7686',
+            muted: '#F4F6F8', border: '#E5E7EB',
+            flashcard: '#2A2B36',
+          }
+        }
+      }
+    }
+    // PERBAIKAN MERMAID: Cegah auto-shrink (mengecil) & perbesar font
+    mermaid.initialize({ 
+        startOnLoad: false, 
+        theme: 'default',
+        flowchart: { useMaxWidth: false }, /* Kunci utama agar tidak mengecil */
+        themeVariables: { fontSize: '20px', fontFamily: 'Lexend Deca' }
+    });
+  </script>
+  <style>
+    /* CSS Khusus Animasi Flip Flashcard */
+    .perspective { perspective: 1000px; }
+    .transform-style-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    
+    /* Styling Editor MS Word (UKURAN SEDANG & IDEAL) */
+    .editor-content h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.75rem; color: #165DFF; line-height: 1.3; }
+    .editor-content h2 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .editor-content p { font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.7; color: #1F2937; }
+    .editor-content ul { font-size: 0.95rem; list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; line-height: 1.7; color: #1F2937; }
+    .editor-content li { margin-bottom: 0.4rem; }
+    .editor-content b { font-weight: 600; color: #000000; background-color: #fef08a; padding: 1px 4px; border-radius: 4px;} 
+
+    /* Mind Map CSS (Agar tidak mengecil) */
+    #mindmap-container {
+        align-items: flex-start !important; 
+        justify-content: flex-start !important;
+        overflow: auto !important; 
+        padding: 40px;
+    }
+    .mermaid svg {
+        min-width: 1200px !important; 
+        height: auto !important;
+    }
+  </style>
+</head>
+<body class="font-sans bg-[#1E1F29] text-white min-h-[100dvh] overflow-hidden flex">
+
+  <aside class="w-[260px] bg-[#1E1F29] border-r border-gray-800 flex flex-col h-[100dvh] shrink-0 p-4">
+    <button class="flex items-center gap-3 text-gray-400 hover:text-white transition mb-8 mt-2 cursor-pointer font-medium">
+        <i data-lucide="chevron-left" class="size-5"></i> Kembali
+    </button>
+    
+    <nav class="space-y-2 flex-1" id="study-nav">
+        <button data-tab="tab-documents" class="study-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-400 hover:bg-gray-800 transition cursor-pointer font-medium">
+            <i data-lucide="folder" class="size-5"></i> Documents
+        </button>
+        <button data-tab="tab-note" class="study-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-400 hover:bg-gray-800 transition cursor-pointer font-medium hidden" id="nav-note">
+            <i data-lucide="notepad-text" class="size-5"></i> Note & Tutor
+        </button>
+        <button data-tab="tab-mindmap" class="study-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-400 hover:bg-gray-800 transition cursor-pointer font-medium hidden" id="nav-mindmap">
+            <i data-lucide="git-merge" class="size-5"></i> Mind Map
+        </button>
+        <button data-tab="tab-flashcards" class="study-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-400 hover:bg-gray-800 transition cursor-pointer font-medium hidden" id="nav-flashcards">
+            <i data-lucide="credit-card" class="size-5"></i> Flashcards
+        </button>
+        <button data-tab="tab-quiz" class="study-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-400 hover:bg-gray-800 transition cursor-pointer font-medium hidden" id="nav-quiz">
+            <i data-lucide="message-square-text" class="size-5"></i> Quiz
+        </button>
+    </nav>
+  </aside>
+
+  <main class="flex-1 bg-white text-foreground h-[100dvh] overflow-hidden flex flex-col relative">
+    
+    <div id="tab-documents" class="tab-content h-full flex flex-col items-center justify-center p-8 bg-muted">
+        <div class="max-w-md w-full bg-white p-8 rounded-2xl shadow-sm border border-border text-center">
+            <div class="size-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="file-up" class="size-8 text-primary"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Upload Materi Kuliah</h2>
+            <p class="text-secondary text-sm mb-6">Upload PDF atau TXT. Opang akan mengubahnya menjadi Catatan interaktif, Mind Map, Flashcards, dan Kuis.</p>
+            
+            <input type="file" id="upload-doc" accept=".txt,.pdf,.png,.jpg,.jpeg,.webp" class="hidden">
+            <label for="upload-doc" class="w-full py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition cursor-pointer block mb-3">Pilih Dokumen / Gambar</label>
+            <p class="text-xs text-secondary italic" id="upload-status">Mendukung: TXT, PDF, PNG, JPG (Termasuk foto catatan/slide).</p>
+        </div>
+    </div>
+
+    <div id="tab-note" class="tab-content h-full hidden flex-col md:flex-row">
+        <div class="flex-[6] h-full flex flex-col border-r border-border bg-white">
+            <div class="h-14 border-b border-border flex items-center px-6 bg-gray-50 shrink-0 gap-2">
+                <button onclick="formatDoc('bold')" class="p-1.5 hover:bg-gray-200 rounded text-secondary" title="Bold"><i data-lucide="bold" class="size-4"></i></button>
+                <button onclick="formatDoc('italic')" class="p-1.5 hover:bg-gray-200 rounded text-secondary" title="Italic"><i data-lucide="italic" class="size-4"></i></button>
+                <div class="w-px h-5 bg-border mx-1"></div>
+                <h3 class="font-bold text-sm text-secondary ml-2">Smart Note (Bisa Diedit)</h3>
+            </div>
+            <div class="flex-1 overflow-y-auto p-8 lg:p-12">
+                <div id="ai-note-editor" contenteditable="true" class="editor-content w-full h-full outline-none text-sm text-gray-800">
+                    <p class="text-gray-400 italic">Menganalisis dokumen dan menyusun ringkasan...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex-[4] h-full flex flex-col bg-muted relative">
+            <div class="h-14 border-b border-border flex items-center px-4 bg-white shrink-0">
+                <h3 class="font-bold text-sm flex items-center gap-2 text-primary"><i data-lucide="bot" class="size-5"></i> Opang Tutor 24/7</h3>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
+                <div class="text-center text-xs text-secondary mt-10">Tanyakan sesuatu yang kurang jelas dari catatan di sebelah kiri!</div>
+            </div>
+            <div class="p-4 bg-white border-t border-border shrink-0">
+                <div class="relative">
+                    <input type="text" id="chat-input" placeholder="Tanya Opang..." class="w-full pl-4 pr-12 py-3 rounded-xl border border-border outline-none focus:border-primary text-sm bg-muted focus:bg-white transition-colors">
+                    <button onclick="sendChat()" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition cursor-pointer">
+                        <i data-lucide="send" class="size-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-mindmap" class="tab-content h-full hidden flex-col bg-muted">
+        <div class="h-16 flex items-center justify-between px-6 bg-white border-b border-border shrink-0">
+            <div>
+                <h2 class="font-bold text-lg">AI Mind Map</h2>
+                <p class="text-xs text-secondary">Peta konsep otomatis dari catatanmu.</p>
+            </div>
+            <button onclick="generateMindMap()" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover cursor-pointer" id="btn-generate-mindmap">
+                <i data-lucide="refresh-cw" class="size-4 inline mr-1"></i> Generate AI
+            </button>
+        </div>
+        <div class="flex-1 overflow-auto p-6 flex items-center justify-center" id="mindmap-container">
+            <div class="text-center text-secondary">
+                <i data-lucide="git-merge" class="size-10 mx-auto mb-2 opacity-50"></i>
+                <p class="text-sm">Klik "Generate AI" untuk menyusun Mind Map.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-flashcards" class="tab-content h-full hidden flex-col bg-[#1E1F29] text-white">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-gray-800 shrink-0">
+            <h2 class="font-bold text-lg">Flashcards</h2>
+            <div class="flex gap-2">
+                <button onclick="autoGenerateFlashcards()" class="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 cursor-pointer" id="btn-ai-flashcard">
+                    <i data-lucide="sparkles" class="size-4 inline mr-1"></i> Generate dari Note
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex-1 overflow-hidden flex flex-col items-center justify-center p-6 relative">
+            <div class="perspective w-full max-w-2xl aspect-[4/3] max-h-[500px] relative">
+                <div id="flashcard-flipper" class="w-full h-full absolute transform-style-3d transition-transform duration-500 cursor-pointer" onclick="flipCurrentCard()">
+                    
+                    <div id="card-front" class="absolute inset-0 bg-[#2A2B36] rounded-[2rem] border border-gray-700 p-6 flex flex-col backface-hidden shadow-2xl">
+                        <div class="flex justify-between items-start w-full">
+                            <span class="px-4 py-1.5 rounded-full bg-white/10 text-xs font-bold tracking-wider opacity-80">QUESTION</span>
+                            <div class="flex gap-2">
+                                <button onclick="event.stopPropagation();" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 transition cursor-pointer"><i data-lucide="pen" class="size-4"></i></button>
+                                <button onclick="event.stopPropagation(); deleteCurrentFlashcard()" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-red-400 transition cursor-pointer"><i data-lucide="trash-2" class="size-4"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center text-2xl md:text-4xl font-semibold text-center px-4" id="fc-display-q">
+                            Buat Flashcard menggunakan AI terlebih dahulu!
+                        </div>
+                        <div class="text-center text-sm text-gray-500 pb-2"><i data-lucide="pointer" class="size-4 inline mr-1"></i> Click to flip</div>
+                    </div>
+
+                    <div id="card-back" class="absolute inset-0 bg-primary rounded-[2rem] border border-primary-hover p-6 flex flex-col backface-hidden rotate-y-180 shadow-2xl text-white">
+                        <div class="flex justify-between items-start w-full">
+                            <span class="px-4 py-1.5 rounded-full bg-black/20 text-xs font-bold tracking-wider">ANSWER</span>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center text-xl md:text-2xl font-medium text-center px-8 leading-relaxed" id="fc-display-a">
+                            Jawaban akan muncul di sini.
+                        </div>
+                        <div class="text-center text-sm text-white/70 pb-2"><i data-lucide="pointer" class="size-4 inline mr-1"></i> Click to return</div>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="prevCard()" class="absolute left-8 md:left-24 top-1/2 -translate-y-1/2 size-12 rounded-full bg-[#2A2B36] hover:bg-gray-700 flex items-center justify-center text-white cursor-pointer shadow-lg border border-gray-700 z-10"><i data-lucide="chevron-left" class="size-6"></i></button>
+            <button onclick="nextCard()" class="absolute right-8 md:right-24 top-1/2 -translate-y-1/2 size-12 rounded-full bg-[#2A2B36] hover:bg-gray-700 flex items-center justify-center text-white cursor-pointer shadow-lg border border-gray-700 z-10"><i data-lucide="chevron-right" class="size-6"></i></button>
+            
+            <p class="mt-8 text-gray-400 font-medium tracking-widest" id="fc-counter">0 / 0</p>
+        </div>
+    </div>
+
+    <div id="tab-quiz" class="tab-content h-full hidden flex-col bg-muted overflow-y-auto">
+        <div class="max-w-3xl mx-auto w-full p-6 md:p-10">
+            <div class="flex items-center justify-between mb-8 bg-white p-6 rounded-2xl shadow-sm border border-border">
+                <div>
+                    <h2 class="font-bold text-2xl mb-1">Tes Pemahaman</h2>
+                    <p class="text-secondary text-sm">Minimal 5 soal diracik oleh AI dari catatanmu.</p>
+                </div>
+                <button onclick="generateQuiz()" class="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover cursor-pointer transition shadow-md" id="btn-generate-quiz">
+                    Mulai Generate Kuis
+                </button>
+            </div>
+            
+            <div id="quiz-container" class="space-y-4">
+                </div>
+
+            <div id="quiz-result" class="mt-8 hidden">
+                <div class="bg-success-light border border-success-dark/20 rounded-2xl p-8 text-center">
+                    <h4 class="font-bold text-lg text-success-dark mb-2">Selesai! Skor Kamu:</h4>
+                    <p class="text-5xl font-black text-success-dark mb-4" id="quiz-score">0/0</p>
+                    <p class="text-sm text-success-dark font-medium" id="quiz-feedback">Luar biasa!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+  </main>
+
+  <div id="toast" class="fixed top-4 right-4 z-[110] transform translate-x-full transition-transform duration-300 w-[90%] md:w-auto mx-auto left-0 md:left-auto right-0 md:right-4"><div class="bg-white border border-border rounded-xl p-3 shadow-lg flex items-center gap-3"><div id="toast-icon" class="size-8 rounded-lg flex items-center justify-center shrink-0"></div><p id="toast-message" class="font-medium text-sm pr-2">Berhasil!</p></div></div>
+
+  <script>
+    // Cek apakah lucide berhasil dimuat, jika ya baru render ikonnya
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    } else {
+        console.warn("Ikon Lucide gagal dimuat karena diblokir jaringan.");
+    }
+  </script>
+  <script src="js/studywithopang.js"></script>
+</body>
+</html>
