@@ -32,20 +32,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       if (isLoginMode) {
+        // PROSES LOGIN
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         window.location.href = 'index.html';
       } else {
-        // 1. Daftar ke Supabase Auth
-        const { error: authError } = await supabaseClient.auth.signUp({ email, password });
+        // PROSES REGISTER (SIGN UP)
+        // 1. Daftar ke Supabase Auth & Tangkap Data UUID-nya
+        const { data, error: authError } = await supabaseClient.auth.signUp({ email, password });
         if (authError) throw authError;
 
-        // 2. Insert otomatis ke tabel kustom 'users' milik Anda untuk mendapatkan id tipe Integer
+        // 2. Insert otomatis ke tabel kustom 'users' TANPA password
         const username = email.split('@')[0] + Math.floor(Math.random() * 1000);
         const { error: dbError } = await supabaseClient.from('users').insert([{ 
           username: username,
           email: email,
-          password: password // Disimpan untuk memenuhi 'password TEXT NOT NULL' di skema Anda
+          auth_id: data.user.id // 🔥 SIMPAN UUID AUTH SEBAGAI KUNCI RELASI AMAN
         }]);
         
         if (dbError) throw dbError;

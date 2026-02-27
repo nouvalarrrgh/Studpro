@@ -3,42 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' data: blob: https://ui-avatars.com https://jhroizqbsijvjdvgkonf.supabase.co https://img.pikbest.com;
+  media-src 'self' https://cdn.pixabay.com;
+  connect-src 'self' https://jhroizqbsijvjdvgkonf.supabase.co wss://jhroizqbsijvjdvgkonf.supabase.co https://generativelanguage.googleapis.com https://unpkg.com https://cdn.jsdelivr.net;
+">
   <title>Student Productivity Super App</title>
   <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    if (typeof lucide === 'undefined') {
-      document.write('<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"><\/script>');
-    }
-  </script>
-  
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-  
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Lexend Deca', 'sans-serif'] },
-          colors: {
-            primary: '#165DFF', 'primary-hover': '#0E4BD9',
-            foreground: '#080C1A', secondary: '#6A7686',
-            muted: '#F4F6F8', border: '#E5E7EB',
-            success: '#30B22D', 'success-light': '#DCFCE7', 'success-dark': '#166534',
-            error: '#ED6B60', 'error-light': '#FEE2E2', 'error-dark': '#991B1B',
-            warning: '#FED71F', 'warning-light': '#FEF9C3', 'warning-dark': '#854D0E',
-            info: '#00B2FF', 'info-light': '#E0F7FF', 'info-dark': '#00618A',
-            // Warna Khusus Me+ Style
-            'me-morning': '#FF9F43', 'me-afternoon': '#54A0FF', 'me-evening': '#5F27CD'
-          }
-        }
-      }
-    }
-    mermaid.initialize({ startOnLoad: false, theme: 'default', flowchart: { useMaxWidth: false }, themeVariables: { fontSize: '20px', fontFamily: 'Lexend Deca' } });
-  </script>
+  <script src="https://cdn.tailwindcss.com/3.4.15"></script>
+
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" integrity="sha384-hJnF5AwidE18GSWTAGHv3ByzzvfNZ1Tcx5y1UUV3WkauuMCEzBJBMSwSt/PUPXnM" crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.12/dist/umd/supabase.min.js" integrity="sha384-AvvgxQvsvq3Z0cl73ZPiMA8faxkbYol1FE5ZYWzhS249M5K0Dm42BvVGzf9Zo06P" crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" integrity="sha384-rbtjAdnIQE/aQJGEgXrVUlMibdfTSa4PQju4HDhN3sR2PmaKFzhEafuePsl9H/9I" crossorigin="anonymous"></script>
+
+<script src="js/config.js"></script>
   <style>
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -1013,6 +1000,22 @@
             </div>
         </div>
     </div>
+    <div class="mt-8 border-t border-border pt-8">
+            <h3 class="font-bold text-lg text-foreground mb-1 flex items-center gap-2">
+                <i data-lucide="shield-alert" class="size-5 text-red-500"></i> Manajemen Akun
+            </h3>
+            <p class="text-sm text-secondary mb-5">Atur sesi masuk atau hapus akun Anda secara permanen dari sistem.</p>
+            
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+                <button id="btn-settings-logout" class="w-full sm:w-auto px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition flex items-center justify-center gap-2 border border-gray-200 cursor-pointer">
+                    <i data-lucide="log-out" class="size-4"></i> Keluar Akun
+                </button>
+                
+                <button onclick="deleteMyAccount()" class="w-full sm:w-auto px-6 py-2.5 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white font-bold rounded-xl transition flex items-center justify-center gap-2 border border-red-200 hover:border-red-500 cursor-pointer group">
+                    <i data-lucide="trash-2" class="size-4 group-hover:animate-bounce"></i> Hapus Akun Permanen
+                </button>
+            </div>
+        </div>
 </div>
 
 <div id="section-studywithopang" class="content-section hidden flex-col h-[calc(100vh-140px)]">

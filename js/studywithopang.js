@@ -54,10 +54,10 @@ window.formatDoc = function(cmd) { document.execCommand(cmd, false, null); }
 // ==============================================================
 // 2. KONEKSI AI GEMINI (MENDUKUNG MULTIMODAL / GAMBAR & PDF)
 // ==============================================================
-window.AI_API_KEY = 'AIzaSyDcJkjRruBLf4B8ld04yAB7_zhKbRNsJ-Q'; 
+// 🔥 KUNCI API TELAH DIHAPUS DARI SINI DEMI KEAMANAN
 
+// 🔥 FUNGSI PENARIK AI YANG SUDAH DILENGKAPI DETEKTIF ERROR
 async function fetchGeminiResponse(promptText, inlineData = null) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${window.AI_API_KEY}`;
     let parts = [{ text: promptText }];
     
     // Jika ada file (PDF/Gambar), tambahkan ke payload sebagai "Mata" AI
@@ -71,20 +71,36 @@ async function fetchGeminiResponse(promptText, inlineData = null) {
     }
 
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: parts }] })
-      });
-      if (!response.ok) throw new Error('API AI menolak koneksi.');
-      const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
+        const { data, error } = await window.supabaseClient.functions.invoke('hyper-endpoint', {
+            body: { parts: parts } 
+        });
+
+        // 1. Cek error dari sisi jaringan Supabase
+        if (error) throw new Error('API AI menolak koneksi via Proxy: ' + error.message);
+
+        // 2. 🔥 DETEKTIF: Cek apakah Google Gemini membalas dengan pesan Error
+        if (data && data.error) {
+            console.error("❌ ERROR DARI GOOGLE GEMINI:", data.error);
+            throw new Error(`Ditolak Google: ${data.error.message}`);
+        }
+
+        // 3. Cek apakah jawaban AI diblokir oleh Filter Keamanan (Pornografi/Kekerasan/dll)
+        if (data && data.candidates && data.candidates[0] && data.candidates[0].finishReason === 'SAFETY') {
+             throw new Error('Jawaban AI ditahan oleh Filter Keamanan Google.');
+        }
+
+        // 4. Pastikan format akhir benar
+        if (!data || !data.candidates || !data.candidates[0].content) {
+            console.error("❓ RAW DATA MISTERIUS DARI SERVER:", data);
+            throw new Error('Format balasan AI tidak valid. Buka Console (F12) untuk melihat data asli.');
+        }
+        
+        return data.candidates[0].content.parts[0].text;
     } catch (error) {
-      console.error('AI Error:', error);
-      throw error;
+        console.error('AI Error Terdeteksi:', error);
+        throw error; // Lempar ke fungsi pemanggil agar UI menampilkan pesan merah
     }
 }
-
 
 // --- A. BACA DOKUMEN/GAMBAR & OTOMATIS GENERATE NOTE ---
 document.getElementById('upload-doc').addEventListener('change', function(e) {
@@ -144,7 +160,7 @@ SYARAT TEKNIS MUTLAK:
             editor.innerHTML = cleanHtml;
             window.showToast('Penglihatan AI berhasil! Catatan siap.', 'success');
         } catch (error) {
-            editor.innerHTML = '<p class="text-error font-bold text-lg">Gagal memindai file.</p><p class="text-base text-secondary">Pastikan ukuran file ringan dan API Key valid.</p>';
+            editor.innerHTML = '<p class="text-error font-bold text-lg">Gagal memindai file.</p><p class="text-base text-secondary">Pastikan ukuran file ringan dan server Edge Functions aktif.</p>';
             window.showToast('Gagal memproses file ke AI.', 'error');
         }
     };
@@ -187,6 +203,7 @@ window.sendChat = async function() {
         box.scrollTop = box.scrollHeight;
     } catch(err) {
         document.getElementById(typingId).remove();
+        box.innerHTML += `<div class="mb-3 flex justify-start"><div class="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-xl rounded-bl-sm max-w-[85%] text-sm shadow-sm italic">Gagal menyambung ke server AI.</div></div>`;
     }
 }
 document.getElementById('chat-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') window.sendChat(); });
@@ -380,7 +397,7 @@ window.exportNoteToWorkspace = async function() {
         if (!error) {
             if (typeof window.showToast === 'function') window.showToast('Berhasil diexport ke Ruang Kerja!', 'success');
             
-            // 🔥 TAMBAHAN BARU: Refresh daftar workspace agar catatan langsung muncul di layar!
+            // Refresh daftar workspace agar catatan langsung muncul di layar!
             if (typeof window.loadWorkspacePages === 'function') {
                 await window.loadWorkspacePages();
             }

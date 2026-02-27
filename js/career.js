@@ -3,7 +3,7 @@
 let thesisProjects = [];
 let currentThesisId = null;
 
-window.AI_API_KEY = 'AIzaSyDcJkjRruBLf4B8ld04yAB7_zhKbRNsJ-Q';  
+// 🔥 KUNCI API TELAH DIHAPUS DARI SINI DEMI KEAMANAN
 
 async function getUserId() {
     return window.dbUser ? window.dbUser.id : null;
@@ -71,8 +71,8 @@ document.getElementById('form-new-thesis')?.addEventListener('submit', async fun
     btn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Menganalisis...';
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // 🔥 PROMPT YANG DIPERBARUI: Memisahkan "Points" (terlihat di layar) dan "Insight" (di dalam tombol ?)
-    const prompt = `Bertindaklah sebagai Dosen Pembimbing Skripsi Ahli. Saya memiliki rencana penelitian skripsi:
+    // PROMPT YANG DIPERBARUI: Memisahkan "Points" (terlihat di layar) dan "Insight" (di dalam tombol ?)
+    const promptText = `Bertindaklah sebagai Dosen Pembimbing Skripsi Ahli. Saya memiliki rencana penelitian skripsi:
     - Judul: ${title}
     - Rumusan Masalah: ${problem}
     - Tujuan: ${objective}
@@ -144,13 +144,14 @@ document.getElementById('form-new-thesis')?.addEventListener('submit', async fun
     }`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${window.AI_API_KEY}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        // 🔥 PERUBAHAN UTAMA: Memanggil API melalui Supabase Edge Functions
+        const { data, error } = await window.supabaseClient.functions.invoke('hyper-endpoint', {
+            body: { prompt: promptText }
         });
         
-        if (!response.ok) throw new Error('API AI Error');
-        const data = await response.json();
+        if (aiError) throw new Error('Gagal menghubungi AI Server: ' + aiError.message);
+        if (!data || !data.candidates || !data.candidates[0].content) throw new Error('Format balasan AI tidak valid.');
+
         const rawJson = data.candidates[0].content.parts[0].text;
         
         const cleanBracketFirst = rawJson.indexOf('{');
@@ -169,8 +170,8 @@ document.getElementById('form-new-thesis')?.addEventListener('submit', async fun
             structure: aiResult.structure
         };
 
-        const { error } = await window.supabaseClient.from('thesis_projects').insert([payload]);
-        if (error) throw error;
+        const { error: dbError } = await window.supabaseClient.from('thesis_projects').insert([payload]);
+        if (dbError) throw dbError;
 
         window.closeModal('modal-new-thesis');
         this.reset(); 
@@ -178,8 +179,8 @@ document.getElementById('form-new-thesis')?.addEventListener('submit', async fun
         if (typeof window.showToast === 'function') window.showToast("Struktur Skripsi berhasil dibuat!", "success");
 
     } catch(err) {
-        console.error(err);
-        alert("Gagal menganalisis AI: Cek Console untuk detail.");
+        console.error("AI Analysis Error:", err);
+        alert("Gagal menganalisis AI: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Buat Struktur (AI)';
@@ -241,7 +242,7 @@ window.viewThesisDetail = function(id) {
                 chap.sections.forEach((sec, sIdx) => {
                     const insightId = `insight-${cIdx}-${sIdx}`;
                     
-                    // 🔥 MENYUSUN POIN-POIN PENJELASAN (Agar tampil seperti di Actdemic)
+                    // MENYUSUN POIN-POIN PENJELASAN
                     let pointsHtml = '';
                     if (sec.points && Array.isArray(sec.points)) {
                         pointsHtml = `<ul class="list-disc list-outside ml-4 mb-4 text-sm text-secondary space-y-2">` +
@@ -306,7 +307,6 @@ window.closeThesisDetail = function() {
 // MEMUNCULKAN MODAL KONFIRMASI HAPUS
 window.deleteCurrentThesis = function() {
     if(!currentThesisId) return;
-    // Buka modal custom buatan kita
     if (typeof window.openModal === 'function') {
         window.openModal('modal-delete-thesis');
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -321,16 +321,13 @@ window.executeDeleteThesis = async function() {
     const originalText = btn.innerHTML;
     
     try {
-        // Ubah tombol jadi loading
         btn.disabled = true;
         btn.innerHTML = '<i class="animate-spin size-4" data-lucide="loader-2"></i> Menghapus...';
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
-        // Hapus dari database
         const { error } = await window.supabaseClient.from('thesis_projects').delete().eq('id', currentThesisId);
         if (error) throw error;
 
-        // Tutup modal, tutup detail, dan muat ulang daftar
         if (typeof window.closeModal === 'function') window.closeModal('modal-delete-thesis');
         closeThesisDetail();
         window.loadThesisData();
@@ -341,7 +338,6 @@ window.executeDeleteThesis = async function() {
         console.error("Gagal menghapus:", error);
         alert("Gagal menghapus proyek: Cek Console.");
     } finally {
-        // Kembalikan tombol seperti semula
         btn.disabled = false;
         btn.innerHTML = originalText;
         if (typeof lucide !== 'undefined') lucide.createIcons();

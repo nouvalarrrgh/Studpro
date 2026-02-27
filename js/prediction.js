@@ -2,9 +2,9 @@
 
 let predictionCollections = [];
 let isJawabanShown = false;
-window.AI_API_KEY = 'AIzaSyDcJkjRruBLf4B8ld04yAB7_zhKbRNsJ-Q'; 
 
-// 🔥 PERBAIKAN 1: Sinkronisasi ID Global (Sama seperti Ruang Kerja)
+// 🔥 KUNCI API TELAH DIHAPUS DARI SINI DEMI KEAMANAN
+
 async function getUserId() {
     return window.dbUser ? window.dbUser.id : null;
 }
@@ -20,13 +20,11 @@ window.loadPredictionData = async function() {
 function renderPredictionGrid() {
     const grid = document.getElementById('prediction-grid');
     
-    // 🔥 PERBAIKAN: Cek dulu apakah elemen teksnya ada di HTML. Kalau tidak ada, lewati saja!
     const countText = document.getElementById('pred-count-text');
     if (countText) {
         countText.textContent = predictionCollections.length;
     }
     
-    // Kalau grid-nya juga tidak ada di halaman ini, hentikan prosesnya agar tidak error
     if (!grid) return;
     
     if(predictionCollections.length === 0) {
@@ -69,14 +67,13 @@ document.getElementById('form-prediction')?.addEventListener('submit', async fun
             inlineData = { mimeType: file.type, base64 };
         }
 
-        // 🔥 PERBAIKAN 2: Instruksi Promt AI yang lebih kejam & ketat!
         const prompt = `Bertindaklah sebagai Dosen Ahli untuk mata kuliah/pelajaran ${subject}. Analisis dokumen/gambar soal ujian lama ini. Berdasarkan pola, tingkat kesulitan (${type}), dan materi yang ada, buatlah 5 prediksi soal ujian (Pilihan Ganda) yang paling mungkin keluar di ujian berikutnya. 
         KEMBALIKAN HANYA FORMAT JSON ARRAY MURNI TANPA TEKS LAIN! JANGAN ADA KATA PENGANTAR "Baik, ini...". HARUS DIMULAI DENGAN '[' DAN DIAKHIRI DENGAN ']'.
         Contoh Format WAJIB: [{"q":"Soal", "options":["A","B","C","D"], "answer":"A", "explanation":"alasan"}]`;
 
+        // Panggil fungsi proxy
         const responseText = await fetchPredictionAI(prompt, inlineData);
         
-        // 🔥 PERBAIKAN 3: Mengekstrak JSON Murni secara paksa (Abaikan basa-basi AI)
         const firstBracket = responseText.indexOf('[');
         const lastBracket = responseText.lastIndexOf(']');
         
@@ -84,11 +81,9 @@ document.getElementById('form-prediction')?.addEventListener('submit', async fun
             throw new Error("AI gagal memformat struktur JSON. Coba ulangi lagi.");
         }
         
-        // Potong hanya bagian dari [ sampai ]
         const cleanJson = responseText.substring(firstBracket, lastBracket + 1);
         const aiResultArray = JSON.parse(cleanJson);
 
-        // 🔥 PERBAIKAN 4: Menghapus "id" manual agar Supabase otomatis mengaturnya
         const payload = { user_id: userId, title, subject, exam_type: type, questions: aiResultArray };
         
         const { error } = await window.supabaseClient.from('prediction_collections').insert([payload]);
@@ -105,13 +100,26 @@ document.getElementById('form-prediction')?.addEventListener('submit', async fun
     }
 });
 
+// 🔥 FUNGSI FETCH YANG SUDAH DIAMANKAN DENGAN EDGE FUNCTION
 async function fetchPredictionAI(promptText, inlineData = null) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${window.AI_API_KEY}`;
     let parts = [{ text: promptText }];
-    if (inlineData) parts.push({ inline_data: { mime_type: inlineData.mimeType, data: inlineData.base64 } });
-    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: parts }] }) });
-    if (!response.ok) throw new Error('API AI menolak koneksi. (Cek Kuota/API Key)');
-    const data = await response.json(); return data.candidates[0].content.parts[0].text;
+    
+    // Masukkan file gambar jika ada
+    if (inlineData) {
+        parts.push({ 
+            inline_data: { mime_type: inlineData.mimeType, data: inlineData.base64 } 
+        });
+    }
+
+    // Panggil proxy Edge Function kita yang sudah dimodifikasi
+    const { data, error } = await window.supabaseClient.functions.invoke('hyper-endpoint', {
+        body: { parts: parts } // Kirim "parts" agar bisa menangani file + teks
+    });
+    
+    if (error) throw new Error('API AI menolak koneksi via Proxy: ' + error.message);
+    if (!data || !data.candidates || !data.candidates[0].content) throw new Error('Format balasan AI tidak valid.');
+    
+    return data.candidates[0].content.parts[0].text;
 }
 
 window.openPredictionDetail = function(idx) {

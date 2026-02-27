@@ -1,9 +1,6 @@
 // js/app.js
 import { supabaseClient } from './supabase.js';
 
-// MASTER API KEY UNTUK SEMUA FITUR AI
-window.AI_API_KEY = 'AIzaSyDcJkjRruBLf4B8ld04yAB7_zhKbRNsJ-Q';
-
 // ==========================================
 // STATE LOKAL & KONSTANTA
 // ==========================================
@@ -158,8 +155,8 @@ window.loadDashboardStats = async function() {
         if(document.getElementById('stat-calendar')) document.getElementById('stat-calendar').textContent = await getCount('calendar_events');
         
         try {
-            const { count: cDone } = await supabaseClient.from('tasks').select('*', { count: 'exact', head: true }).eq('user_id', myId).eq('status', 'done');
-            const { count: cPend } = await supabaseClient.from('tasks').select('*', { count: 'exact', head: true }).eq('user_id', myId).neq('status', 'done');
+            const { count: cDone } = await supabaseClient.from('tasks').select('*', { count: 'exact', head: true }).eq('user_id', myId).eq('status', 'completed');
+            const { count: cPend } = await supabaseClient.from('tasks').select('*', { count: 'exact', head: true }).eq('user_id', myId).neq('status', 'completed');
             if(document.getElementById('stat-tasks-done')) document.getElementById('stat-tasks-done').textContent = cDone || 0;
             if(document.getElementById('stat-tasks-pending')) document.getElementById('stat-tasks-pending').textContent = cPend || 0;
         } catch(e) {}
@@ -480,19 +477,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = 'login.html';
       return;
     }
+    
+    // 🔥 BARIS INI SANGAT PENTING DAN TIDAK BOLEH HILANG
     const { data: userData, error: userError } = await supabaseClient.from('users').select('*').eq('email', session.user.email).single();
-    if (userError || !userData) { alert("Profil tidak ditemukan."); return; }
+    
+    // ERROR HANDLING YANG BARU DAN ELEGAN
+    if (userError || !userData) { 
+        if (typeof window.showToast === 'function') {
+            window.showToast("Koneksi terputus atau profil tidak ditemukan. Cek internet Anda.", "error");
+        } else {
+            console.warn("Profil tidak ditemukan karena offline.");
+        }
+        return; 
+    }
     
     dbUser = userData; 
 
     if (dbUser.is_onboarded === false || dbUser.is_onboarded === null) {
-        document.getElementById('ob-username').value = dbUser.username || '';
+        if(document.getElementById('ob-username')) document.getElementById('ob-username').value = dbUser.username || '';
         window.openModal('modal-onboarding');
     } else {
         applyUserInfoToUI();
         loadDashboardStats();
     }
-  } catch (err) { console.error(err); }
+  } catch (err) { 
+      console.error("Gagal inisialisasi sesi:", err); 
+  }
 
   /* =======================================
      AUTO CHECK NOTIFICATION (LATAR BELAKANG)
@@ -3368,12 +3378,9 @@ document.addEventListener('DOMContentLoaded', () => {
 ======================================= */
 window.loadWorkspacePages = async function() {
     const listContainer = document.getElementById('workspace-pages-list');
-    
-    // Pastikan container ada dan user sudah login (ID Angka)
     if (!listContainer || !window.dbUser || !window.dbUser.id) return;
 
     try {
-        // Ambil data hanya milik user yang sedang login
         const { data, error } = await supabaseClient
             .from('workspace_pages')
             .select('*')
@@ -3381,34 +3388,204 @@ window.loadWorkspacePages = async function() {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-
         listContainer.innerHTML = '';
 
         if (data && data.length > 0) {
             data.forEach(page => {
                 const item = document.createElement('div');
-                item.className = "flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer group transition mb-1";
+                item.className = "flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer group transition mb-1 border border-transparent hover:border-gray-200";
                 
-                // Menentukan icon berdasarkan tipe halaman
                 const iconName = page.type === 'note' ? 'file-text' : 'layout';
                 
                 item.innerHTML = `
-                    <div class="flex items-center gap-3 overflow-hidden flex-1" onclick="openWorkspacePage(${page.id})">
+                    <div class="flex items-center gap-3 overflow-hidden flex-1" onclick="if(typeof openWorkspacePage === 'function') openWorkspacePage(${page.id})">
                         <div class="p-2 bg-primary/10 text-primary rounded-lg">
                             <i data-lucide="${iconName}" class="size-4"></i>
                         </div>
                         <span class="text-sm font-medium truncate">${page.title}</span>
                     </div>
+                    
+                    <button onclick="event.stopPropagation(); deleteWorkspacePage(${page.id})" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition opacity-0 group-hover:opacity-100 tooltip shrink-0" title="Hapus Permanen">
+                        <i data-lucide="trash-2" class="size-4"></i>
+                    </button>
                 `;
                 listContainer.appendChild(item);
             });
-            
-            // Refresh icon Lucide agar muncul
             if (typeof lucide !== 'undefined') lucide.createIcons();
         } else {
             listContainer.innerHTML = '<p class="text-xs text-secondary text-center py-6 italic">Belum ada catatan di sini.</p>';
         }
     } catch (err) {
         console.error("Gagal memuat daftar workspace:", err);
+    }
+};
+
+/* =======================================
+   🔥 FUNGSI PENGHANCUR RUANG KERJA 🔥
+======================================= */
+window.deleteWorkspacePage = async function(pageId) {
+    if (!confirm("⚠️ PERINGATAN! Yakin ingin menghapus halaman ini secara permanen?")) return;
+    
+    try {
+        // 1. Tembak perintah DELETE ke Supabase
+        const { error } = await supabaseClient.from('workspace_pages').delete().eq('id', pageId);
+        if (error) throw error;
+
+        // 2. Beri Notifikasi
+        if (typeof window.showToast === 'function') window.showToast("Halaman berhasil dibakar!", "success");
+        
+        // 3. Render ulang list (Agar hantu tidak kembali)
+        window.loadWorkspacePages();
+        
+        // 4. Update angka di Dashboard
+        if (typeof window.loadDashboardStats === 'function') window.loadDashboardStats();
+        
+        // 5. Tutup layar editor jika halaman yang dihapus sedang dibuka
+        if (window.currentWorkspacePageId === pageId) {
+            const editorArea = document.getElementById('workspace-editor-area');
+            const emptyState = document.getElementById('workspace-empty-state');
+            if (editorArea) editorArea.classList.add('hidden');
+            if (emptyState) emptyState.classList.remove('hidden');
+            window.currentWorkspacePageId = null;
+        }
+
+    } catch (err) {
+        console.error("Gagal menghapus:", err);
+        if (typeof window.showToast === 'function') window.showToast("Gagal menghapus halaman dari server.", "error");
+    }
+};
+
+// ==========================================
+// KOTAK HITAM: GLOBAL ERROR LOGGER
+// ==========================================
+window.addEventListener('error', function(event) {
+    console.error("CRITICAL UI ERROR:", event.error);
+    if(typeof window.showToast === 'function') {
+        window.showToast("Terjadi gangguan sistem UI. Coba muat ulang halaman.", "error");
+    }
+});
+
+window.addEventListener('unhandledrejection', function(event) {
+    console.error("CRITICAL NETWORK ERROR:", event.reason);
+    // Jangan tampilkan toast untuk error jaringan kecil agar tidak mengganggu user
+    if(event.reason && event.reason.message && event.reason.message.includes('Failed to fetch')) return;
+    
+    if(typeof window.showToast === 'function') {
+        window.showToast("Gagal memproses data. Cek koneksi internet Anda.", "error");
+    }
+});
+
+// ==========================================
+// FUNGSI MANAJEMEN AKUN (ZONA BERBAHAYA)
+// ==========================================
+
+// 1. Hubungkan tombol Logout di Pengaturan ke fungsi Logout bawaan
+document.addEventListener('DOMContentLoaded', () => {
+    const btnSettingsLogout = document.getElementById('btn-settings-logout');
+    if (btnSettingsLogout) {
+        btnSettingsLogout.addEventListener('click', async () => {
+            btnSettingsLogout.innerHTML = '<i class="animate-spin size-4" data-lucide="loader-2"></i> Keluar...';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            await window.supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        });
+    }
+});
+
+// 2. Fungsi Eksekusi Hapus Akun Permanen
+window.deleteMyAccount = async function() {
+    // Peringatan Lapis 1
+    const confirm1 = confirm("⚠️ PERINGATAN ZONA BERBAHAYA!\n\nApakah Anda yakin ingin menghapus akun ini? Seluruh data, tugas, keuangan, dan catatan Anda akan ikut terhapus dan TIDAK BISA dikembalikan.");
+    if (!confirm1) return;
+
+    // Peringatan Lapis 2 (Ketik Konfirmasi)
+    const confirm2 = prompt("Untuk melanjutkan, ketik kata 'HAPUS' di bawah ini:");
+    if (confirm2 !== 'HAPUS') {
+        if(typeof window.showToast === 'function') window.showToast("Penghapusan akun dibatalkan.", "info");
+        return;
+    }
+
+    try {
+        if(typeof window.showToast === 'function') window.showToast("Sedang menghapus akun...", "warning");
+
+        // Hapus data pengguna dari tabel publik 'users'
+        // Catatan: Jika database memiliki aturan 'ON DELETE CASCADE', semua data terkait (tugas, dll) akan otomatis bersih.
+        const { error: dbError } = await window.supabaseClient
+            .from('users')
+            .delete()
+            .eq('id', window.dbUser.id);
+            
+        if (dbError) throw dbError;
+
+        // Sign Out paksa untuk menghapus sesi dari Browser
+        await window.supabaseClient.auth.signOut();
+        
+        alert("Akun Anda telah berhasil dihapus. Terima kasih telah menggunakan layanan kami.");
+        window.location.href = 'login.html'; // Lempar kembali ke halaman login
+
+    } catch (err) {
+        console.error("Gagal menghapus akun:", err);
+        if(typeof window.showToast === 'function') {
+            window.showToast("Gagal menghapus akun: " + err.message, "error");
+        } else {
+            alert("Terjadi kesalahan saat menghapus akun.");
+        }
+    }
+}
+
+/* =======================================
+   🔥 FUNGSI PENGHANCUR RUANG KERJA (REVISI INSTAN) 🔥
+======================================= */
+window.deleteWorkspacePage = async function(pageId) {
+    if (!confirm("⚠️ PERINGATAN! Yakin ingin menghapus halaman ini secara permanen?")) return;
+    
+    // 1. (Optimistic Update) Lenyapkan dari layar sekarang juga! (Biar tidak ada jeda loading)
+    const btnDelete = document.querySelector(`button[onclick*="deleteWorkspacePage(${pageId})"]`);
+    if (btnDelete) {
+        const cardItem = btnDelete.closest('.flex.items-center');
+        if (cardItem) cardItem.classList.add('hidden');
+    }
+
+    try {
+        // 2. Tembak perintah DELETE ke Supabase dan paksa kirim laporan (.select())
+        const { data, error } = await window.supabaseClient
+            .from('workspace_pages')
+            .delete()
+            .eq('id', pageId)
+            .select(); // Penting: Untuk mengecek apakah RLS memblokirnya
+
+        if (error) throw error;
+
+        // 3. Jika data kosong, berarti RLS Supabase diam-diam memblokir penghapusan
+        if (!data || data.length === 0) {
+            console.warn("Halaman tidak terhapus di Database! Terhalang RLS.");
+            if (typeof window.showToast === 'function') window.showToast("Gagal! Terhalang sistem keamanan (RLS) Database.", "warning");
+            
+            // Munculkan kembali hantunya karena gagal dibakar di server
+            if (btnDelete) btnDelete.closest('.flex.items-center').classList.remove('hidden');
+            return;
+        }
+
+        // 4. Beri Notifikasi Sukses
+        if (typeof window.showToast === 'function') window.showToast("Halaman berhasil dibakar permanen!", "success");
+        
+        // 5. Update angka di Dashboard Analitik seketika
+        if (typeof window.loadDashboardStats === 'function') window.loadDashboardStats();
+        
+        // 6. Tutup layar editor jika halaman yang dihapus sedang dibuka
+        if (window.currentWorkspacePageId === pageId) {
+            const editorArea = document.getElementById('workspace-editor-area');
+            const emptyState = document.getElementById('workspace-empty-state');
+            if (editorArea) editorArea.classList.add('hidden');
+            if (emptyState) emptyState.classList.remove('hidden');
+            window.currentWorkspacePageId = null;
+        }
+
+    } catch (err) {
+        console.error("Gagal menghapus:", err);
+        if (typeof window.showToast === 'function') window.showToast("Gagal menghapus halaman dari server.", "error");
+        // Segarkan ulang daftar jika terjadi error jaringan
+        if (typeof window.loadWorkspacePages === 'function') window.loadWorkspacePages();
     }
 };
