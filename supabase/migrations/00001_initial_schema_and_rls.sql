@@ -7,11 +7,7 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.habits ENABLE ROW LEVEL SECURITY;
-
--- Catatan Pengecualian: 
--- Tabel workspace_pages sengaja dinonaktifkan RLS-nya secara sementara 
--- untuk mengatasi isu penghapusan dari frontend (Client-Side).
-ALTER TABLE public.workspace_pages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.workspace_pages ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 2. KEBIJAKAN KEAMANAN (POLICIES)
@@ -38,5 +34,11 @@ WITH CHECK (user_id = (SELECT id FROM public.users WHERE auth_id = auth.uid()));
 -- D. TABEL HABITS (Kebiasaan privat)
 CREATE POLICY "Habits isolated to owner" 
 ON public.habits FOR ALL 
+USING (user_id = (SELECT id FROM public.users WHERE auth_id = auth.uid()))
+WITH CHECK (user_id = (SELECT id FROM public.users WHERE auth_id = auth.uid()));
+
+-- 2. Pasang gembok: Hanya pemilik sah yang bisa mengakses dan mengubah datanya
+CREATE POLICY "Workspace pages isolated to owner" 
+ON public.workspace_pages FOR ALL 
 USING (user_id = (SELECT id FROM public.users WHERE auth_id = auth.uid()))
 WITH CHECK (user_id = (SELECT id FROM public.users WHERE auth_id = auth.uid()));
