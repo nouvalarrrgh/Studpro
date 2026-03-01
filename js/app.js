@@ -10,12 +10,70 @@ let myCharts = {};
 // Cache untuk notifikasi latar belakang (Auto-Check)
 let localCache = { tasks: [], financeBalance: 0, _reminded: {}, _warnedBalance: false };
 
+// --- SESSION & NETWORK WATCHDOG -------------------------------------------------
+// Supabase can silently convert your session to a "zombie" state if the refresh
+// attempt fails (e.g. ERR_INTERNET_DISCONNECTED).  We register a couple of
+// global listeners to detect token refresh failures and offline/online changes.
+// When a session is no longer valid we force the user back to the login page.
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'TOKEN_REFRESH_FAILED' || event === 'SIGNED_OUT') {
+        console.warn('Auth state change:', event);
+        window.showToast('Sesi habis, silakan login ulang.', 'error');
+        supabaseClient.auth.signOut();
+        window.location.href = 'login.html';
+    }
+});
+
+window.addEventListener('offline', () => {
+    window.showToast('Koneksi internet terputus! Fitur offline mungkin tidak tersedia.', 'error');
+});
+
+window.addEventListener('online', async () => {
+    // setelah koneksi kembali, pastikan sesi masih hidup
+    try {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error || !data.session) {
+            window.showToast('Sesi tidak valid, akan kembali ke login.', 'error');
+            supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        } else {
+            window.showToast('Koneksi kembali. Sesi telah disinkronkan.', 'success');
+        }
+    } catch {
+        // ignore
+    }
+});
+
+// helper untuk menangani error Supabase umum
+function handleSupabaseError(err) {
+    if (!err) return;
+    if (err.status === 401 || (err.message && /session|token/i.test(err.message))) {
+        console.warn('Supabase unauthorized, logging out');
+        supabaseClient.auth.signOut();
+        window.location.href = 'login.html';
+    }
+}
+
+
 // ==========================================
 // FUNGSI UI GLOBAL
 // ==========================================
 window.openModal = function(id) {
-  document.getElementById(id).classList.remove('hidden');
-  document.getElementById(id).classList.add('flex');
+  const el = document.getElementById(id);
+  if (el) {
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+  }
+  // Jika modal IP tracker dibuka, bersihkan form dan aspek agar tidak ada bentrok
+  if (id === 'modal-iptracker') {
+      const f = document.getElementById('form-iptracker');
+      if (f) f.reset();
+      const box = document.getElementById('wadah-aspek-ipk');
+      if (box) box.innerHTML = '';
+      const label = document.getElementById('label-total-bobot');
+      if (label) label.textContent = 'Total Bobot: 0%';
+  }
 }
 
 window.closeModal = function(id) {
@@ -1249,6 +1307,118 @@ window.deleteCourse = async function(courseId) {
 }
 
   /* =======================================
+     FITUR 5½: IP TRACKER SUBMIT + DUPLICATE FIX
+  ======================================= */
+
+  // Pastikan hanya ada satu listener untuk form-iptracker. listener ini melakukan
+  // semua pekerjaan: validasi input, menyimpan kursus/semester, dan menutup
+  // modal. kita juga membersihkan container terlebih dahulu untuk menghindari
+  // "race" antara reset form dan pembacaan data dari Supabase.
+  const formIpTracker = document.getElementById('form-iptracker');
+  formIpTracker?.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!dbUser || !dbUser.id) return;
+
+      // bersihkan UI dan form agar tidak ada sisa data saat proses berlangsung
+      const container = document.getElementById('iptracker-container');
+      if (container) container.innerHTML = '';
+
+      try {
+          const semesterNum = parseInt(document.getElementById('ip-semester').value) || 0;
+          const sks = parseFloat(document.getElementById('ip-sks').value) || 0;
+          const courseName = document.getElementById('ip-course').value.trim();
+          if (!semesterNum || !sks || !courseName) throw new Error('Lengkapi semua kolom');
+
+          // cari atau buat semester yang sesuai
+          let semesterId;
+          const { data: semData, error: semErr } = await supabaseClient.from('ip_semesters')
+              .select('*').eq('user_id', dbUser.id).eq('semester_number', semesterNum).single();
+          if (semErr && semErr.code !== 'PGRST116') throw semErr; // 404 ignored
+          if (semData) {
+              semesterId = semData.id;
+          } else {
+              const { data: newSem, error: newErr } = await supabaseClient.from('ip_semesters')
+                  .insert([{ user_id: dbUser.id, semester_number: semesterNum }]).select().single();
+              if (newErr) throw newErr;
+              semesterId = newSem.id;
+          }
+
+          // simpan kursus baru
+          const { data: newCourse, error: courseErr } = await supabaseClient.from('ip_courses')
+              .insert([{ user_id: dbUser.id, semester_id: semesterId, course_name: courseName, sks }])
+              .select().single();
+          if (courseErr) throw courseErr;
+          const courseId = newCourse.id;
+
+          // ambil aspek-aspek yang mungkin ditambahkan secara dinamis
+          const aspects = [];
+          document.querySelectorAll('#wadah-aspek-ipk .aspect-row').forEach(r => {
+              const nameEl = r.querySelector('.aspect-name');
+              const weightEl = r.querySelector('.aspect-weight');
+              const scoreEl = r.querySelector('.aspect-score');
+              if (nameEl && weightEl && scoreEl) {
+                  const name = nameEl.value.trim();
+                  const weight = parseFloat(weightEl.value) || 0;
+                  const score = parseFloat(scoreEl.value) || 0;
+                  if (name && weight > 0) aspects.push({ name, weight, score });
+              }
+          });
+          // masukkan aspek-aspek jika ada
+          if (aspects.length) {
+              for (const a of aspects) {
+                  await supabaseClient.from('ip_assessments').insert([{ course_id: courseId, name: a.name, weight: a.weight, score: a.score }]);
+              }
+          }
+
+          window.showToast('Mata kuliah berhasil ditambahkan!', 'success');
+          closeModal('modal-iptracker');
+          formIpTracker.reset();
+          if (container) container.innerHTML = '';
+          if (typeof window.loadIpTracker === 'function') window.loadIpTracker();
+          if (typeof window.loadDashboardStats === 'function') window.loadDashboardStats();
+      } catch (err) {
+          console.error('IP tracker submit error', err);
+          window.showToast(err.message || 'Terjadi kesalahan', 'error');
+      }
+  });
+
+  // dyn. row helper: tambah / hapus aspek beserta perhitungan total bobot
+  document.getElementById('btn-tambah-aspek')?.addEventListener('click', () => {
+      const box = document.getElementById('wadah-aspek-ipk');
+      if (!box) return;
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 aspect-row';
+      row.innerHTML = `
+          <input type="text" class="aspect-name w-full px-2 py-1 text-sm border rounded" placeholder="Nama aspek" required>
+          <input type="number" class="aspect-weight w-20 px-2 py-1 text-sm border rounded" placeholder="Bobot (%)" required min="0" max="100">
+          <input type="number" class="aspect-score w-20 px-2 py-1 text-sm border rounded" placeholder="Nilai" required min="0" max="100">
+          <button type="button" class="btn-remove-aspect px-2 text-red-500 font-bold">×</button>
+      `;
+      box.appendChild(row);
+      row.querySelector('.btn-remove-aspect').addEventListener('click', () => { row.remove(); updateAspectTotal(); });
+      updateAspectTotal();
+  });
+
+  // reset form dan aspek setiap kali modal iptracker dibuka/ditutup
+  document.getElementById('btn-tutup-iptracker')?.addEventListener('click', () => {
+      if (formIpTracker) formIpTracker.reset();
+      const box = document.getElementById('wadah-aspek-ipk');
+      if (box) box.innerHTML = '';
+      const label = document.getElementById('label-total-bobot');
+      if (label) label.textContent = 'Total Bobot: 0%';
+  });
+
+  document.getElementById('wadah-aspek-ipk')?.addEventListener('input', updateAspectTotal);
+  function updateAspectTotal() {
+      const box = document.getElementById('wadah-aspek-ipk');
+      if (!box) return;
+      let total = 0;
+      box.querySelectorAll('.aspect-weight').forEach(el => { total += parseFloat(el.value) || 0; });
+      const label = document.getElementById('label-total-bobot');
+      if (label) label.textContent = `Total Bobot: ${total}%`;
+  }
+
+  /* =======================================
      FITUR 6: HABIT TRACKER (ME+ STYLE FULL DYNAMIC)
   ======================================= */
   let currentHabitFilter = 'all';
@@ -2166,62 +2336,8 @@ document.getElementById('btn-edit-profile')?.addEventListener('click', async () 
     document.getElementById('edit-portfolio').value = userData.portfolio_url || '';
 });
 
-// 2. Fungsi Menutup Modal
-window.closeEditProfileModal = function() {
-    const modal = document.getElementById('modal-edit-profile');
-    if (modal) modal.classList.add('hidden');
-}
+// duplicate listener removed – only the first handler (defined earlier) is kept
 
-// 3. Fungsi Menyimpan Data ke Database
-const formEditProfile = document.getElementById('form-edit-profile');
-formEditProfile?.addEventListener('submit', async (e) => {
-    e.preventDefault(); // Mencegah halaman ter-refresh otomatis
-    if (!dbUser || !dbUser.id) return;
-
-    // Kumpulkan data yang baru diketik
-    const updatedData = {
-        full_name: document.getElementById('edit-full-name').value,
-        role_title: document.getElementById('edit-role').value,
-        location: document.getElementById('edit-location').value,
-        university: document.getElementById('edit-university').value,
-        major: document.getElementById('edit-major').value,
-        organization_tags: document.getElementById('edit-orgs').value,
-        target_ipk: parseFloat(document.getElementById('edit-target-ipk').value) || 4.00,
-        target_graduation: document.getElementById('edit-target-grad').value,
-        weekly_study_target: parseInt(document.getElementById('edit-target-study').value) || 20,
-        github_url: document.getElementById('edit-github').value,
-        portfolio_url: document.getElementById('edit-portfolio').value
-    };
-
-    try {
-        // Update tabel users di Supabase
-        const { error } = await supabaseClient.from('users').update(updatedData).eq('id', dbUser.id);
-        
-        if (error) throw error;
-
-        // Berhasil!
-        if (typeof window.showToast === 'function') {
-            window.showToast('Profil berhasil diperbarui!', 'success');
-        } else {
-            alert('Profil berhasil diperbarui!');
-        }
-
-        closeEditProfileModal(); // Tutup pop-up
-        
-        // Refresh tampilan profil secara otomatis
-        if (typeof loadProfileData === 'function') {
-            loadProfileData(); 
-        }
-        
-    } catch (err) {
-        console.error('Gagal update profil:', err);
-        if (typeof window.showToast === 'function') {
-            window.showToast('Gagal menyimpan profil!', 'error');
-        } else {
-            alert('Gagal menyimpan profil!');
-        }
-    }
-});
 
 /* =======================================
    SISTEM ONBOARDING (WELCOME SCREEN)
@@ -3232,50 +3348,6 @@ window.getI18nText = function(key) {
     return texts[key] || key;
 };
 
-// --- D. MESIN DRAG & DROP APP GATEWAY ---
-window.enableAppGatewayDragDrop = function() {
-    const container = document.getElementById('apps-grid');
-    if (!container) return;
-
-    let draggedItem = null;
-    container.querySelectorAll('.app-card').forEach(item => {
-        item.setAttribute('draggable', true);
-        item.classList.add('cursor-grab', 'relative', 'z-50');
-
-        item.addEventListener('dragstart', function(e) {
-            draggedItem = item;
-            setTimeout(() => item.classList.add('opacity-40', 'scale-95'), 0);
-        });
-
-        item.addEventListener('dragend', function() {
-            setTimeout(() => item.classList.remove('opacity-40', 'scale-95'), 0);
-            draggedItem = null;
-        });
-
-        item.addEventListener('dragover', function(e) { e.preventDefault(); });
-
-        item.addEventListener('dragenter', function(e) {
-            e.preventDefault();
-            if(draggedItem !== this) this.classList.add('ring-4', 'ring-indigo-500', 'scale-105');
-        });
-
-        item.addEventListener('dragleave', function() {
-            this.classList.remove('ring-4', 'ring-indigo-500', 'scale-105');
-        });
-
-        item.addEventListener('drop', function() {
-            this.classList.remove('ring-4', 'ring-indigo-500', 'scale-105');
-            if (draggedItem !== this) {
-                let allItems = [...container.querySelectorAll('.app-card')];
-                let draggedIdx = allItems.indexOf(draggedItem);
-                let targetIdx = allItems.indexOf(this);
-                if (draggedIdx < targetIdx) this.after(draggedItem);
-                else this.before(draggedItem);
-            }
-        });
-    });
-};
-
 // ==========================================
 // INISIALISASI & LISTENER PENGATURAN
 // ==========================================
@@ -3589,3 +3661,71 @@ window.deleteWorkspacePage = async function(pageId) {
         if (typeof window.loadWorkspacePages === 'function') window.loadWorkspacePages();
     }
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    } else {
+        setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 1000);
+    }
+});
+
+    // Set default tanggal hari ini
+    document.addEventListener('DOMContentLoaded', () => {
+        const dateInput = document.getElementById('hb-start-date');
+        if (dateInput) {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+            dateInput.value = localISOTime;
+        }
+    });
+
+    // Menampilkan Gelembung Hari
+    function toggleFreqDays(val) {
+        const specificDiv = document.getElementById('hb-freq-specific');
+        if(val === 'specific') {
+            specificDiv.classList.remove('hidden');
+            specificDiv.classList.add('flex');
+        } else {
+            specificDiv.classList.add('hidden');
+            specificDiv.classList.remove('flex');
+        }
+    }
+
+    // Menampilkan Input Target Kali/Hari
+    function toggleGoalCount(val) {
+        const wrap = document.getElementById('hb-goal-wrapper');
+        if(val === 'times') {
+            wrap.classList.remove('hidden');
+            wrap.classList.add('flex');
+            document.getElementById('hb-goal-count').focus();
+        } else {
+            wrap.classList.add('hidden');
+            wrap.classList.remove('flex');
+        }
+    }
+
+    // Menampilkan Input Hari Custom
+    function toggleCustomDays(val) {
+        const customInput = document.getElementById('hb-custom-days');
+        if(val === 'custom') {
+            customInput.classList.remove('hidden');
+            customInput.focus();
+        } else {
+            customInput.classList.add('hidden');
+        }
+    }
+
+    // Menambah Waktu Reminder
+    function addReminderField() {
+        const container = document.getElementById('hb-reminder-container');
+        const newDiv = document.createElement('div');
+        newDiv.className = 'flex items-center gap-2 reminder-item mt-1 animate-pulse';
+        newDiv.innerHTML = `
+            <input type="time" value="09:00" class="hb-reminder-input bg-gray-50 border border-border rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-primary hover:bg-gray-100 transition">
+            <button type="button" onclick="this.parentElement.remove()" class="flex items-center justify-center size-9 bg-red-50 border border-red-100 hover:bg-red-100 rounded-xl text-red-500 transition cursor-pointer"><i data-lucide="minus" class="size-4"></i></button>
+        `;
+        container.appendChild(newDiv);
+        setTimeout(() => newDiv.classList.remove('animate-pulse'), 300);
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+    }
